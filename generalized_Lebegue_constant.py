@@ -14,6 +14,7 @@ def generalized_Lebegue_constant_withBasisAndDegree(basis, start, end):
     """
     import matplotlib.pyplot as plt
     import generate_basis as generator
+    import basis_cache
 
     if not callable(basis):
         raise TypeError('basis must be a node generator: basis(n) -> n nodes.')
@@ -32,7 +33,7 @@ def generalized_Lebegue_constant_withBasisAndDegree(basis, start, end):
             weights = np.asarray(generator.weights(lagrange), dtype=float)
             if not np.all(np.isfinite(weights)) or np.any(np.abs(weights) < 1e-12):
                 raise ValueError('A normalization weight is zero or numerically near zero.')
-            functions = generator.get_New_Basis(nodes)
+            functions = generator.get_New_Basis(nodes, basis_name=basis_cache.node_source_name(basis))
             constants.append(_sampled_constant(functions, x_values))
         except Exception as error:
             raise ValueError(f'Cannot calculate the constant for n={n}: {error}') from error
@@ -57,7 +58,7 @@ def generalized_Lebegue_constant_withA(n):
         raise ValueError('n must be 4 or 5.')
     a = generator.a
     nodes = [-1, -a, a, 1] if n == 4 else [-1, -a, 0, a, 1]
-    functions = generator.get_New_Basis(nodes)
+    functions = generator.get_New_Basis(nodes, basis_name='adjustable')
     poles = [1 / np.sqrt(3)] if n == 4 else [1 / np.sqrt(5), np.sqrt(3 / 5)]
     a_values = np.sort(np.concatenate((np.arange(1, 100) / 100, poles)))
     x_values = np.linspace(-1, 1, 4001)

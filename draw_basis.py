@@ -467,7 +467,7 @@ def draw_basis_selector(sources, n_initial=4, n_min=2, n_max=12, initial_basis=N
         if not callable(source) and degree not in source:
             return None
         nodes = validate_nodes(source(degree) if callable(source) else source[degree], degree)
-        F = basis_generator.get_New_Basis(nodes)
+        F = basis_generator.get_New_Basis(nodes, basis_name=name)
         values = np.array([np.broadcast_to(sp.lambdify(x, f, 'numpy')(t), t.shape)
                            for f in F], dtype=float)
         if not np.all(np.isfinite(values)):
@@ -610,7 +610,7 @@ def draw_lebesgue_selector(sources, n_initial=4, n_min=2, n_max=12, initial_basi
         nodes = np.asarray(nodes.real, dtype=float)
         if nodes.ndim != 1 or len(nodes) != degree or not np.all(np.isfinite(nodes)) or len(np.unique(nodes)) != degree:
             raise ValueError('Expected n distinct finite nodes.')
-        expression = generalized_Lebegue_function(basis_generator.get_New_Basis(nodes))
+        expression = generalized_Lebegue_function(basis_generator.get_New_Basis(nodes, basis_name=name))
         values = np.asarray(np.broadcast_to(sp.lambdify(x, expression, 'numpy')(x_values), x_values.shape), dtype=float)
         if not np.all(np.isfinite(values)):
             raise ValueError('Non-finite values; check normalization weights.')

@@ -70,11 +70,29 @@ def New_Basis(G):
     return F
 
 # 노드를 넣으면 GL과 비슷하게 basis를 구성하는 함수
-def get_New_Basis(nodes):
+def get_New_Basis(nodes, *, basis_name=None):
+    import basis_cache
+
+    nodes = list(nodes)
+    try:
+        identity = basis_cache.cache_identity(
+            nodes, (lagrange_poly, lagrange_basis, weights, Normalized_Lagrange,
+                    Cumulative_Lagrange, New_Basis, get_New_Basis)
+        )
+    except (OSError, TypeError, ValueError):
+        identity = None
+    if identity is not None:
+        cached = basis_cache.load(identity, basis_name)
+        if cached is not None:
+            return cached
+        
     lag = lagrange_basis(nodes)
     w = weights(lag)
     # print(w)
     N = Normalized_Lagrange(lag, w)
     G = Cumulative_Lagrange(N)
     F = New_Basis(G)
+    
+    if identity is not None:
+        basis_cache.save(identity, F, basis_name)
     return F

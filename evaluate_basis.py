@@ -318,6 +318,7 @@ def save_basis_degree_comparison(
     같은 파일은 덮어쓰며 계산 실패 시 파일을 변경하지 않는다. 절대 경로를 반환한다.
     """
     import generate_basis as basis_generator
+    import basis_cache
 
     if not callable(node_function):
         raise TypeError("node_function must be callable.")
@@ -340,7 +341,7 @@ def save_basis_degree_comparison(
             if (nodes.ndim != 1 or len(nodes) != degree
                     or not np.all(np.isfinite(nodes)) or len(np.unique(nodes)) != degree):
                 raise ValueError("Expected n distinct finite nodes.")
-            bases[degree] = basis_generator.get_New_Basis(nodes)
+            bases[degree] = basis_generator.get_New_Basis(nodes, basis_name=basis_cache.node_source_name(node_function))
         except Exception as error:
             raise ValueError(f"Cannot generate basis for n={degree}: {error}") from error
 
