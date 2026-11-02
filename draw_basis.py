@@ -555,13 +555,14 @@ def draw_adjustable_lebesgue(basis, a_initial=0.5, a_min=0.01, a_max=0.99, step=
     ax.set(xlabel='x', ylabel=r'$\Lambda_F(x)$', xlim=(-1, 1))
     ax.grid(True)
 
+    n = len(basis)
     def update(value):
         values = np.asarray(np.broadcast_to(function(x_values, value), x_values.shape), dtype=float)
         line.set_data(x_values, values)
         maximum = np.max(values)
         maximum_line.set_ydata([maximum, maximum])
         maximum_line.set_label(f'Maximum ≈ {maximum:.4g}')
-        ax.set_title(f'Generalized Lebesgue function: a={value:.2f}')
+        ax.set_title(f'n={n-1}, Generalized Lebesgue function: a={value:.2f}')
         ax.relim()
         ax.autoscale_view(scalex=False)
         ax.legend(loc="upper right")

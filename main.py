@@ -7,6 +7,7 @@ import generate_basis as basis
 import draw_basis as draw
 import draw_curve as curve
 import evaluate_basis as eval
+import generalized_Lebegue_constant as lebesgue
 
 
 if __name__ == "__main__":
@@ -20,6 +21,9 @@ if __name__ == "__main__":
         "ESCLo": nodes.ESCLo_nodes,
         "uniform": nodes.uniform_nodes
     }
+
+    ##################################################################################################################
+    # 1️⃣ basis를 차수와 종류별로 나누어 관찰
     # fig, ax, basis_selector, degree_slider = draw.draw_basis_selector(
     #     basis_sources,
     #     n_initial=3,
@@ -27,47 +31,61 @@ if __name__ == "__main__":
     #     n_max=15,
     #     initial_basis="GL",
     # )
-    # 4개 노드 (-1, -a, a, 1)의 기저를 a 슬라이더로 조절한다.
+
+    ##################################################################################################################
+    # 2️⃣ 4개 노드 (-1, -a, a, 1)의 기저를 a 슬라이더로 조절한다.
     a = sp.symbols("a")
-    adjustable_nodes = [-1, -a, a, 1]
-    adjustable_basis = basis.get_New_Basis(adjustable_nodes)
-    a_initial = 0.5
-    a_scope = [0.01, 0.99, a_initial, 0.01]
+    # adjustable_nodes = [-1, -a, a, 1]
+    # adjustable_basis = basis.get_New_Basis(adjustable_nodes)
+    # a_initial = 0.5
+    # a_scope = [0.01, 0.99, a_initial, 0.01]
 
-    fig_a, ax_a = plt.subplots(figsize=(10, 6))
-    t_values_a, basis_funcs_a, lines_a = draw.draw_basis_1val(
-        adjustable_basis, ax_a, a_initial
-    )
-    ax_a.set_title(rf'Basis functions for $a={a_initial:.2f}$')
-    ax_a.legend(loc="upper right")
-    a_slider = draw.add_basis_slider(
-        fig_a, ax_a, t_values_a, basis_funcs_a, lines_a, a_initial, a_scope
-    )
-    fig_a._adjustable_basis_slider = a_slider
+    # fig_a, ax_a = plt.subplots(figsize=(10, 6))
+    # t_values_a, basis_funcs_a, lines_a = draw.draw_basis_1val(
+    #     adjustable_basis, ax_a, a_initial
+    # )
+    # ax_a.set_title(rf'n=4, Basis functions for $a={a_initial:.2f}$')
+    # ax_a.legend(loc="upper right")
+    # a_slider = draw.add_basis_slider(
+    #     fig_a, ax_a, t_values_a, basis_funcs_a, lines_a, a_initial, a_scope
+    # )
+    # fig_a._adjustable_basis_slider = a_slider
 
+    # fig_adjustable_lebesgue, ax_adjustable_lebesgue, adjustable_lebesgue_slider = (
+    #     draw.draw_adjustable_lebesgue(adjustable_basis, a_initial=a_initial)
+    # )
+
+    ##################################################################################################################
+    # 3️⃣ 일반화 르베그 함수를 차수와 basis 종류로 관찰
     # fig_lebesgue, ax_lebesgue, lebesgue_checks, lebesgue_slider = draw.draw_lebesgue_selector(
     #     basis_sources, n_initial=3, n_min=3, n_max=15, initial_basis="GL"
     # )
-    fig_adjustable_lebesgue, ax_adjustable_lebesgue, adjustable_lebesgue_slider = (
-        draw.draw_adjustable_lebesgue(adjustable_basis, a_initial=a_initial)
-    )
 
-    # 5개 노드 (-1, -a, 0, a, 1)의 기저와 르베그 함수.
-    five_node_basis = basis.get_New_Basis([-1, -a, 0, a, 1])
-    fig_five, ax_five = plt.subplots(figsize=(10, 6))
-    t_values_five, basis_funcs_five, lines_five = draw.draw_basis_1val(
-        five_node_basis, ax_five, a_initial
-    )
-    ax_five.set_title(rf'Basis functions for $a={a_initial:.2f}$')
-    ax_five.legend(loc="upper right")
-    fig_five._adjustable_basis_slider = draw.add_basis_slider(
-        fig_five, ax_five, t_values_five, basis_funcs_five, lines_five,
-        a_initial, a_scope
-    )
-    fig_five_lebesgue, ax_five_lebesgue, five_lebesgue_slider = (
-        draw.draw_adjustable_lebesgue(five_node_basis, a_initial=a_initial)
-    )
+    ##################################################################################################################
+    # 4️⃣ 5개 노드 (-1, -a, 0, a, 1)의 기저와 르베그 함수.
+    # five_node_basis = basis.get_New_Basis([-1, -a, 0, a, 1])
+    # fig_five, ax_five = plt.subplots(figsize=(10, 6))
+    # t_values_five, basis_funcs_five, lines_five = draw.draw_basis_1val(
+    #     five_node_basis, ax_five, a_initial
+    # )
+    # ax_five.set_title(rf'n=5,Basis functions for $a={a_initial:.2f}$')
+    # ax_five.legend(loc="upper right")
+    # fig_five._adjustable_basis_slider = draw.add_basis_slider(
+    #     fig_five, ax_five, t_values_five, basis_funcs_five, lines_five,
+    #     a_initial, a_scope
+    # )
+    # fig_five_lebesgue, ax_five_lebesgue, five_lebesgue_slider = (
+    #     draw.draw_adjustable_lebesgue(five_node_basis, a_initial=a_initial)
+    # )
 
+    ##################################################################################################################
+    # 5️⃣ GL 노드 개수와 대칭 노드의 a에 따른 일반화 르베그 상수.
+    fig_degree_constant, ax_degree_constant = (
+        lebesgue.generalized_Lebegue_constant_withBasisAndDegree(nodes.GL_nodes, 3, 20)
+    )
+    # fig_a4_constant, ax_a4_constant = lebesgue.generalized_Lebegue_constant_withA(4)
+    # fig_a5_constant, ax_a5_constant = lebesgue.generalized_Lebegue_constant_withA(5)
+    
     plt.show()
 
     
