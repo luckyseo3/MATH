@@ -8,6 +8,100 @@ from matplotlib.widgets import CheckButtons, Slider
 
 x, a, b = sp.symbols('x a b')
 
+def draw_adjustable_basis(nodes, parameters, *, ax=None):
+    """노드의 임의 개수 기호를 슬라이더로 조절한다.
+
+    parameters는 {심볼: (최솟값, 최댓값, 초기값, 간격)} 순서의 매핑이다.
+    노드 중복이나 정의되지 않는 기저가 생기는 변경은 이전 값으로 되돌린다.
+    반환값은 (figure, axes, sliders)이며 sliders는 심볼을 키로 갖는다.
+    """
+    import matplotlib.pyplot as plt
+    import generate_basis
+
+    nodes = [sp.sympify(node) for node in nodes]
+    parameters = dict(parameters)
+    symbols = tuple(parameters)
+    if not symbols or any(not isinstance(s, sp.Symbol) or s == x for s in symbols):
+        raise ValueError('parameters must contain symbols other than x.')
+    if set().union(*(node.free_symbols for node in nodes)) != set(symbols):
+        raise ValueError('parameters must match the symbols in nodes.')
+    for scope in parameters.values():
+        if len(scope) != 4 or not (scope[0] < scope[1] and scope[0] <= scope[2] <= scope[1] and scope[3] > 0):
+            raise ValueError('Each parameter needs (min, max, initial, positive step).')
+    basis = generate_basis.get_New_Basis(nodes, basis_name='adjustable')
+    functions = [sp.lambdify((x, *symbols), f, 'numpy') for f in basis]
+    node_functions = [sp.lambdify(symbols, node, 'numpy') for node in nodes]
+    t = np.linspace(-1, 1, 1000)
+
+    def evaluate(values):
+        with np.errstate(all='ignore'):
+            locations = np.asarray([f(*values) for f in node_functions], dtype=float)
+            distances = np.abs(locations[:, None] - locations[None, :])
+            np.fill_diagonal(distances, np.inf)
+            if not np.all(np.isfinite(locations)) or np.any(distances < 1e-10):
+                raise ValueError('Nodes must be distinct and finite.')
+            curves = [np.broadcast_to(np.asarray(f(t, *values), dtype=float), t.shape) for f in functions]
+            if not all(np.all(np.isfinite(curve)) for curve in curves):
+                raise ValueError('Basis must be finite.')
+            return curves, locations
+
+    initial = [parameters[s][2] for s in symbols]
+    try:
+        curves, locations = evaluate(initial)
+    except (ValueError, ZeroDivisionError, TypeError, OverflowError) as exc:
+        raise ValueError('Invalid initial node positions or basis.') from exc
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(10, 6))
+    else:
+        fig = ax.figure
+    lines = [ax.plot(t, curve, label=rf'$F_{{{i}}}$')[0] for i, curve in enumerate(curves)]
+    node_markers = ax.scatter(locations, np.zeros_like(locations), color='black',
+                              zorder=5, label='Nodes')
+    ax.axhline(0, linewidth=0.8)
+    ax.set(xlabel='t', ylabel='Basis value')
+    ax.grid(True)
+    ax.legend()
+    # 많은 변수도 그림 크기를 늘려 각 슬라이더의 공간을 확보한다.
+    height = max(fig.get_figheight(), 4 + 0.55 * len(symbols))
+    fig.set_figheight(height)
+    bottom = (0.55 * len(symbols) + 0.4) / height
+    fig.subplots_adjust(bottom=bottom)
+    sliders = {}
+    for i, symbol in enumerate(symbols):
+        low, high, initial_value, step = parameters[symbol]
+        slider_ax = fig.add_axes([0.2, (0.25 + 0.55 * i) / height, 0.65, 0.25 / height])
+        sliders[symbol] = Slider(slider_ax, str(symbol), low, high, valinit=initial_value, valstep=step)
+    previous = list(initial)
+    updating = False
+
+    def update(_):
+        nonlocal updating, previous
+        if updating:
+            return
+        values = [sliders[s].val for s in symbols]
+        try:
+            new_curves, locations = evaluate(values)
+        except (ValueError, ZeroDivisionError, TypeError, OverflowError):
+            updating = True
+            try:
+                for symbol, value in zip(symbols, previous):
+                    sliders[symbol].set_val(value)
+            finally:
+                updating = False
+            return
+        previous = values
+        for line, curve in zip(lines, new_curves):
+            line.set_ydata(curve)
+        node_markers.set_offsets(np.column_stack((locations, np.zeros_like(locations))))
+        ax.relim()
+        ax.autoscale_view()
+        fig.canvas.draw_idle()
+
+    for slider in sliders.values():
+        slider.on_changed(update)
+    fig._adjustable_node_controls = (sliders, update)
+    return fig, ax, sliders
+
 def draw_function(expression, ax):
     """Plot an expression and its sampled maximum on [-1, 1]."""
     expression = sp.sympify(expression)
@@ -51,62 +145,6 @@ def draw_basis_of_0val(F, ax):
     ax.legend()
 
     return t_values, basis_funcs, lines
-
-def draw_basis_of_2vals(F, ax, a_init, b_init): #원하는 figure에 basis 그래프를 추가
-
-    t_values = np.linspace(-1, 1, 1000)
-    degree = len(F) - 1
-
-    basis_funcs = []
-    lines = []
-
-    for i, F_i in enumerate(F):
-
-        F_func = sp.lambdify((x,a,b), F_i, modules='numpy')
-
-        basis_funcs.append(F_func)
-
-        y_values = F_func(t_values, a_init, b_init)
-
-        line, = ax.plot(t_values, y_values, label=rf'$F_{{{i}}}^{{{degree}}}(t)$')
-
-        lines.append(line)
-    
-    ax.axhline(0, linewidth=0.8)
-    ax.set_xlabel('t')
-    ax.set_ylabel('Basis value')
-    ax.grid(True)
-    ax.legend()
-
-    return t_values, basis_funcs, lines # 그래프를 그릴 t값, F_i(x,a)의 리스트, F_i의 Line2D 객체 리스트
-
-def draw_basis_1val(F, ax, a_init):
-    
-    t_values = np.linspace(-1, 1, 1000)
-    degree = len(F) - 1
-
-    basis_funcs = []
-    lines = []
-
-    for i, F_i in enumerate(F):
-
-        F_func = sp.lambdify((x,a), F_i, modules='numpy')
-
-        basis_funcs.append(F_func)
-
-        y_values = F_func(t_values, a_init)
-
-        line, = ax.plot(t_values, y_values, label=rf'$F_{{{i}}}^{{{degree}}}(t)$')
-
-        lines.append(line)
-    
-    ax.axhline(0, linewidth=0.8)
-    ax.set_xlabel('t')
-    ax.set_ylabel('Basis value')
-    ax.grid(True)
-    ax.legend()
-
-    return t_values, basis_funcs, lines # 그래프를 그릴 t값, F_i(x,a)의 리스트, F_i의 Line2D 객체 리스트
 
 def add_nodes(nodes, ax):
     return ax.scatter(nodes, np.zeros(len(nodes)))
@@ -174,231 +212,6 @@ def add_basis_checkboxes(basisArr, nodesArr, fig, ax):
     return checkbox
 
 # 슬라이더 추가
-
-def add_basis_slider(
-    fig,
-    ax,
-    t_values,
-    basis_funcs,
-    lines,
-    a_initial,
-    scope
-):
-    
-    fig.subplots_adjust(bottom=0.25)
-
-    ax_slider = fig.add_axes(
-        [0.2, 0.1, 0.65, 0.04]
-    )
-
-    a_slider = Slider(
-        ax=ax_slider,
-        label='a',
-        valmin=scope[0],
-        valmax=scope[1],
-        valinit=scope[2],
-        valstep=scope[3]
-    )
-
-    def update(value):
-        current_a = value
-
-        for F_func, line in zip(
-            basis_funcs,
-            lines
-        ):
-            new_y = F_func(
-                t_values,
-                current_a
-            )
-
-            line.set_ydata(new_y)
-
-        ax.relim()
-        ax.autoscale_view()
-
-        ax.set_title(
-            rf'Basis functions for $a={current_a:.2f}$'
-        )
-
-        fig.canvas.draw_idle()
-
-    def on_key_press(event):
-        step = a_slider.valstep
-
-        if event.key == 'right':
-            new_value = a_slider.val + step
-
-        elif event.key == 'left':
-            new_value = a_slider.val - step
-
-        else:
-            return
-
-        new_value = max(
-            a_slider.valmin,
-            min(
-                a_slider.valmax,
-                new_value
-            )
-        )
-
-        a_slider.set_val(new_value)
-
-    a_slider.on_changed(update)
-
-    fig.canvas.mpl_connect(
-        'key_press_event',
-        on_key_press
-    )
-
-    return a_slider
-
-def add_basis_sliders(
-    fig,
-    ax,
-    t_values,
-    basis_funcs,
-    lines,
-    a_initial,
-    b_initial,
-    scope_a,
-    scope_b
-):
-    # 슬라이더 두 개를 위한 공간
-    fig.subplots_adjust(bottom=0.32)
-
-    # a 슬라이더 축
-    ax_slider_a = fig.add_axes(
-        [0.2, 0.15, 0.65, 0.04]
-    )
-
-    # b 슬라이더 축
-    ax_slider_b = fig.add_axes(
-        [0.2, 0.08, 0.65, 0.04]
-    )
-
-    a_slider = Slider(
-        ax=ax_slider_a,
-        label='a',
-        valmin=scope_a[0],
-        valmax=scope_a[1],
-        valinit=scope_a[2],
-        valstep=scope_a[3]
-    )
-
-    b_slider = Slider(
-        ax=ax_slider_b,
-        label='b',
-        valmin=scope_b[0],
-        valmax=scope_b[1],
-        valinit=scope_b[2],
-        valstep=scope_b[3]
-    )
-
-    # 유효한 마지막 슬라이더 값 저장
-    previous_values = {
-        'a': a_initial,
-        'b': b_initial
-    }
-
-    # 콜백 함수가 서로 다시 호출되는 것을 방지
-    updating = False
-
-    def update(value):
-        nonlocal updating
-
-        if updating:
-            return
-
-        current_a = a_slider.val
-        current_b = b_slider.val
-
-        # 반드시 0 < b < a < 1이어야 함
-        if current_b >= current_a:
-            updating = True
-
-            # 조건을 위반하면 직전의 유효한 값으로 복원
-            a_slider.set_val(previous_values['a'])
-            b_slider.set_val(previous_values['b'])
-
-            updating = False
-            return
-
-        previous_values['a'] = current_a
-        previous_values['b'] = current_b
-
-        # 모든 기저함수의 y값 갱신
-        for F_func, line in zip(
-            basis_funcs,
-            lines
-        ):
-            new_y = F_func(
-                t_values,
-                current_a,
-                current_b
-            )
-
-            line.set_ydata(new_y)
-
-        # 새 데이터에 맞게 y축 범위 조절
-        ax.relim()
-        ax.autoscale_view()
-
-        ax.set_title(
-            rf'$a={current_a:.2f},\quad '
-            rf'b={current_b:.2f}$'
-        )
-
-        fig.canvas.draw_idle()
-
-    a_slider.on_changed(update)
-    b_slider.on_changed(update)
-
-    def on_key_press(event):
-        step = scope_a[3]
-
-        current_a = a_slider.val
-        current_b = b_slider.val
-
-        # 좌우 방향키: a 조절
-        if event.key == 'right':
-            new_a = min(
-                a_slider.valmax,
-                current_a + step
-            )
-            a_slider.set_val(new_a)
-
-        elif event.key == 'left':
-            new_a = max(
-                current_b + step,
-                current_a - step
-            )
-            a_slider.set_val(new_a)
-
-        # 위아래 방향키: b 조절
-        elif event.key == 'up':
-            new_b = min(
-                current_a - step,
-                current_b + step
-            )
-            b_slider.set_val(new_b)
-
-        elif event.key == 'down':
-            new_b = max(
-                b_slider.valmin,
-                current_b - step
-            )
-            b_slider.set_val(new_b)
-
-    fig.canvas.mpl_connect(
-        'key_press_event',
-        on_key_press
-    )
-    
-    return a_slider, b_slider
-    
-
 
 def draw_basis_selector(sources, n_initial=4, n_min=2, n_max=12, initial_basis=None):
     """기저 선택과 차수 선택을 한 figure로 제공한다.

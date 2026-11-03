@@ -34,26 +34,26 @@ if __name__ == "__main__":
 
     ##################################################################################################################
     # 2️⃣ 4개 노드 (-1, -a, a, 1)의 기저를 a 슬라이더로 조절한다.
-    a = sp.symbols("a")
-    adjustable_nodes = [-1, -a, a, 1]
+    a, b = sp.symbols("a b")
+    adjustable_nodes = [-1, -b, -a, a, b, 1]
     adjustable_basis = basis.get_New_Basis(adjustable_nodes, basis_name='adjustable')
-    a_initial = 0.5
-    a_scope = [0.01, 0.99, a_initial, 0.01]
+    a_initial = 0.40
+    b_initial = 0.50
+    a_scope = [0.1, 0.9, a_initial, 0.01]
+    b_scope = [0.1, 0.9, b_initial, 0.01]
 
-    fig_a, ax_a = plt.subplots(figsize=(10, 6))
-    t_values_a, basis_funcs_a, lines_a = draw.draw_basis_1val(
-        adjustable_basis, ax_a, a_initial
+
+    fig_a, ax_a, a_sliders = draw.draw_adjustable_basis(
+        adjustable_nodes, 
+        {a: tuple(a_scope),
+         b: tuple(b_scope)}
     )
     ax_a.set_title(rf'n=4, Basis functions for $a={a_initial:.2f}$')
     ax_a.legend(loc="upper right")
-    a_slider = draw.add_basis_slider(
-        fig_a, ax_a, t_values_a, basis_funcs_a, lines_a, a_initial, a_scope
-    )
-    fig_a._adjustable_basis_slider = a_slider
 
-    fig_adjustable_generalized_lebesgue, ax_adjustable_generalized_lebesgue, adjustable_generalized_lebesgue_slider = (
-        draw.draw_adjustable_generalized_lebesgue_function(adjustable_basis, a_initial=a_initial)
-    )
+    # fig_adjustable_generalized_lebesgue, ax_adjustable_generalized_lebesgue, adjustable_generalized_lebesgue_slider = (
+    #     draw.draw_adjustable_generalized_lebesgue_function(adjustable_basis, a_initial=a_initial)
+    # )
 
     ##################################################################################################################
     # 3️⃣ 일반화 르베그 함수를 차수와 basis 종류로 관찰
@@ -64,16 +64,11 @@ if __name__ == "__main__":
     ##################################################################################################################
     # 4️⃣ 5개 노드 (-1, -a, 0, a, 1)의 기저와 일반화 르베그 함수.
     five_node_basis = basis.get_New_Basis([-1, -a, 0, a, 1], basis_name='adjustable')
-    fig_five, ax_five = plt.subplots(figsize=(10, 6))
-    t_values_five, basis_funcs_five, lines_five = draw.draw_basis_1val(
-        five_node_basis, ax_five, a_initial
+    fig_five, ax_five, five_sliders = draw.draw_adjustable_basis(
+        [-1, -a, 0, a, 1], {a: tuple(a_scope)}
     )
     ax_five.set_title(rf'n=5,Basis functions for $a={a_initial:.2f}$')
     ax_five.legend(loc="upper right")
-    fig_five._adjustable_basis_slider = draw.add_basis_slider(
-        fig_five, ax_five, t_values_five, basis_funcs_five, lines_five,
-        a_initial, a_scope
-    )
     fig_five_generalized_lebesgue, ax_five_generalized_lebesgue, five_generalized_lebesgue_slider = (
         draw.draw_adjustable_generalized_lebesgue_function(five_node_basis, a_initial=a_initial)
     )
