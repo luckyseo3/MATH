@@ -127,25 +127,121 @@ By the definition of $F_i^n$, the sign of $\frac{d^2}{dt^2}F_i^n(\tau_k)$, $k\ne
 
 | Position of $k$ | $i+k$ | Sign of $\frac{d^2}{dt^2}F_i^n(\tau_k)$ |
 | --- | --- | --- |
-| $k<i$ | even | $-$ |
-| $k<i$ | odd | $+$ |
-| $k>i+1$ | even | $+$ |
-| $k>i+1$ | odd | $-$ |
+| $k<i$ | even | $(-1)^{i+k+1}=-1$ |
+| $k<i$ | odd | $(-1)^{i+k+1}=+1$ |
+| $k>i+1$ | even | $(-1)^{i+k}=+1$ |
+| $k>i+1$ | odd | $(-1)^{i+k}=-1$ |
 
-# Condition for $t^*$ to lie between $\tau_i$ and $\tau_{i+1}$
+## Endpoint indices $i=0,n$
 
-$t^*$ divides the segment from $\tau_i$ to $\tau_{i+1}$ in the ratio $\alpha:-\beta$. So, if $\alpha\beta<0$ then $t^*$ is the internal point, and if $\alpha\beta>0$ then $t^*$ is the external point.
+The endpoint definitions $G_0^n=\frac12$ and $G_{n+1}^n=-\frac12$ are constant. Hence
 
 $$
+(F_0^n)''(t)=-(\tilde L_1^n)'(t),\qquad
+(F_n^n)''(t)=(\tilde L_n^n)'(t).
+$$
+
+For $k=2,\dots,n$, the numerator of $(\tilde L_1^n)'(\tau_k)$ has $n-k$ negative factors, while $D_1^n$ has $n-1$. Since $\omega_1^n>0$,
+
+$$
+\operatorname{sgn}(F_0^n)''(\tau_k)=(-1)^k.
+$$
+
+For $k=1,\dots,n-1$, the numerator of $(\tilde L_n^n)'(\tau_k)$ has $n-k-1$ negative factors, while $D_n^n$ has none. Since $\omega_n^n>0$,
+
+$$
+\operatorname{sgn}(F_n^n)''(\tau_k)=(-1)^{n-k-1}=(-1)^{n+k+1}.
+$$
+
+Thus the table above also holds at $i=0$ (only $k>i+1$) and $i=n$ (only $k<i$). Together, it covers $i=0,\dots,n$ and the applicable node critical points.
+
+# Position of $t^*$
+
+- t* is defined under $\omega \neq 0$
+- $D_i^n \neq 0$ with the distinct node
+- So, $\alpha \neq 0$ and $\beta \neq 0$
+- $
 \alpha\beta=\frac{\omega_{i+1}^n}{D_i^n}\frac{\omega_i^n}{D_{i+1}^n}.
-$$
+$
 
-Since $D_i^nD_{i+1}^n<0$, $\alpha\beta<0$ if $\omega>0$.
 
-# Nice property of $\omega>0$
+$t^*$ divides the segment from $\tau_i$ to $\tau_{i+1}$ in the ratio $\alpha:-\beta$. We can consider 3 cases.
+1. $t^*$ lies on $\tau_i$ or $\tau_{i+1}$.
+2. $t^*$ is the internal division point of  $\tau_i$ and $\tau_{i+1}$.
+3. $t^*$ is the external division point of  $\tau_i$ and $\tau_{i+1}$. 
 
-By the above lemma, if $\omega>0$ then $\alpha\beta<0$ and $t^*$ is the internal point of $\tau_i$ and $\tau_{i+1}$. So, we do not need to consider the special cases of $t^*$.
+### 1. $t^*$ lies on $\tau_i$ or $\tau_{i+1}$ 
+Since $\alpha \neq 0$ and $\beta \neq 0$, this case is impossible.
+
+### 2. $t^*$ is the internal division point of  $\tau_i$ and $\tau_{i+1}$.
+$
+   \iff \alpha(-\beta) > 0 
+\\ \iff \alpha\beta < 0
+\\ \iff \omega_i^n \omega_{i+1}^n > 0 \qquad \because D_i^n D_{i+1}^n < 0
+\\ \iff \omega_i^n$ and $ \omega_{i+1}^n$ has the same sign.
+
+### 3. $t^*$ is the external division point of  $\tau_i$ and $\tau_{i+1}$.
+$
+   \iff \alpha(-\beta) < 0 
+\\ \iff \alpha\beta > 0
+\\ \iff \omega_i^n \omega_{i+1}^n < 0 \qquad \because D_i^n D_{i+1}^n < 0
+\\ \iff \omega_i^n$ and $ \omega_{i+1}^n$ has different signs.
+$\\ \Longrightarrow \exist \omega <0$ 
+
+### useful facts
+1. Under the positive weights condition, $t^*$ is always the internal division point
+2. With distinct nodes, If $t^*$ is the external division point, then there exists  nonpositive weight.
 
 # New notation of $t^*$
 
 Under the positive weight condition, $t^*$ is the internal point of $\tau_i$ and $\tau_{i+1}$. So from now on, we denote $t^*$ by $\tau_{i+0.5}$, because in many examples it is more understandable. It does not mean the geometrical midpoint of $\tau_i$ and $\tau_{i+1}$.
+
+# $t^*$ is the local maximizer
+
+For $i=1,\dots,n-1$, assume that all quadrature weights are positive. By the interpolation property of the Lagrange polynomials,
+
+$$
+\frac{d}{dt}F_i^n(\tau_i)=\frac{1}{\omega_i^n}>0,
+\qquad
+\frac{d}{dt}F_i^n(\tau_{i+1})=-\frac{1}{\omega_{i+1}^n}<0.
+$$
+
+Since $t^*=\tau_{i+0.5}$ is the unique critical point in $(\tau_i,\tau_{i+1})$, the derivative changes from positive to negative at $t^*$. Therefore, $t^*$ is a local maximum point of $F_i^n$.
+
+# $t^*$ is not necessarily a global maximizer
+
+Even if the nodes are symmetric about zero, include both endpoints, and have positive quadrature weights, $t^*$ need not be a global maximizer on $[-1,1]$.
+
+For example, consider the six nodes
+
+$$
+(\tau_1,\dots,\tau_6)=\left(-1,-\frac12,-\frac15,\frac15,\frac12,1\right).
+$$
+
+Their quadrature weights are all positive:
+
+$$
+(\omega_1^6,\dots,\omega_6^6)=\left(\frac{17}{108},\frac{128}{189},\frac{125}{756},\frac{125}{756},\frac{128}{189},\frac{17}{108}\right).
+$$
+
+The corresponding basis polynomial is
+
+$$
+F_3^6(t)=-\frac{25}{8}(t^2-1)^2(8t^2+1).
+$$
+
+Its critical point between $\tau_3$ and $\tau_4$ is $t^*=0$, which is a local maximum. However,
+
+$$
+F_3^6(0)=-\frac{25}{8}<0=F_3^6(-1)=F_3^6(1).
+$$
+
+Thus $t^*$ is not a global maximizer on $[-1,1]$.
+
+![Basis functions for the symmetric six-node counterexample](critical_point_counterexample.png)
+
+
+# 고민
+
+1. 최댓값을 갖는 점이 여러개인 경우에는 어떤 점을 해당 $$F_i^n$$의 maximizer로 선택할 것인가 -> 근데 이걸 고민해야 되나?
+2. 가중치가 양수임을 가정하면 내분점임을 보장할 수 있지만, 내분점과 외분점으로는 가중치를 보장할 수 없음. -> 이걸 잘 알아보면 양수 가중치 조건을 찾는데 도움이 될지도

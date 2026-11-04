@@ -20,7 +20,7 @@ def _constant_identity(nodes, mode):
 
 def generalized_Lebegue_function(basis):
     """Return the generalized Lebesgue function as a SymPy expression in x."""
-    return sp.Add(*(sp.Abs(f) for f in basis))
+    return sp.Add(*(sp.Abs(f) for f in basis))  
 
 
 def generalized_constant_for_nodes(nodes, basis_name=None):
