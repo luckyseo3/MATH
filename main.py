@@ -5,12 +5,13 @@ import sympy as sp
 import generate_nodes as nodes
 import generate_basis as basis
 import draw_basis as draw
-import draw_curve as curve
-import evaluate_basis as eval
 import generalized_Lebegue_constant as generalized_lebesgue
+import maximum
+import draw_variance as variance_plot
 
 
 if __name__ == "__main__":
+
     # 생성 함수를 전달하면 선택한 방식과 n에 맞춰 기저를 새로 계산한다.
     # n개 노드로 최대 n차인 n+1개의 기저함수를 생성한다.
     basis_sources = {
@@ -36,57 +37,43 @@ if __name__ == "__main__":
     # 2️⃣ 4개 노드 (-1, -a, a, 1)의 기저를 a 슬라이더로 조절한다.
     a, b = sp.symbols("a b")
     adjustable_nodes = [-1, -b, -a, a, b, 1]
-    adjustable_basis = basis.get_New_Basis(adjustable_nodes, basis_name='adjustable')
+    adjustable_basis = basis.get_New_Basis(
+        adjustable_nodes, basis_name='adjustable'
+    )
     a_initial = 0.40
     b_initial = 0.50
     a_scope = [0.1, 0.9, a_initial, 0.01]
     b_scope = [0.1, 0.9, b_initial, 0.01]
 
-
     fig_a, ax_a, a_sliders = draw.draw_adjustable_basis(
-        adjustable_nodes, 
-        {a: tuple(a_scope),
-         b: tuple(b_scope)}
+        adjustable_nodes,
+        {a: tuple(a_scope), b: tuple(b_scope)},
     )
-    ax_a.set_title(rf'n=4, Basis functions for $a={a_initial:.2f}$')
+    ax_a.set_title(rf'n=6, Basis functions for $a={a_initial:.2f}$')
     ax_a.legend(loc="upper right")
-
-    # fig_adjustable_generalized_lebesgue, ax_adjustable_generalized_lebesgue, adjustable_generalized_lebesgue_slider = (
-    #     draw.draw_adjustable_generalized_lebesgue_function(adjustable_basis, a_initial=a_initial)
-    # )
-
-    ##################################################################################################################
-    # 3️⃣ 일반화 르베그 함수를 차수와 basis 종류로 관찰
-    fig_generalized_lebesgue, ax_generalized_lebesgue, generalized_lebesgue_checks, generalized_lebesgue_slider = draw.draw_generalized_lebesgue_function_selector(
-        basis_sources, n_initial=3, n_min=3, n_max=15, initial_basis="GL"
-    )
 
     ##################################################################################################################
     # 4️⃣ 5개 노드 (-1, -a, 0, a, 1)의 기저와 일반화 르베그 함수.
-    five_node_basis = basis.get_New_Basis([-1, -a, 0, a, 1], basis_name='adjustable')
+    five_node_basis = basis.get_New_Basis(
+        [-1, -a, 0, a, 1], basis_name='adjustable'
+    )
     fig_five, ax_five, five_sliders = draw.draw_adjustable_basis(
         [-1, -a, 0, a, 1], {a: tuple(a_scope)}
     )
     ax_five.set_title(rf'n=5,Basis functions for $a={a_initial:.2f}$')
     ax_five.legend(loc="upper right")
-    fig_five_generalized_lebesgue, ax_five_generalized_lebesgue, five_generalized_lebesgue_slider = (
-        draw.draw_adjustable_generalized_lebesgue_function(five_node_basis, a_initial=a_initial)
-    )
 
     ##################################################################################################################
-    # # 5️⃣ GL 노드 개수와 대칭 노드의 a에 따른 일반화 르베그 상수.
-
-    fig, ax, checks, slider = draw.draw_generalized_lebesgue_constant(
-        basis_sources,
-        n_initial=20,
-        n_min=3,
-        n_max=20,
-        initial_basis="GL",
+    # 5️⃣ 6개 노드 (-1, -b, -a, a, b, 1)에서 a, b에 따른 내부 F_1~F_5 최댓값 분산 (a < b인 점만 계산)
+    # 마우스 드래그 또는 elev/azim 슬라이더로 그래프를 돌려볼 수 있다.
+    # 결과는 variance_cache/n6/variance.json에 저장되어 같은 점은 다시 계산하지 않는다.
+    variance_a_values = [sp.Rational(k, 100) for k in range(1, 98)]   # 0.01 ~ 0.97
+    variance_b_values = [sp.Rational(k, 100) for k in range(2, 99)]  # 0.02 ~ 0.98
+    var_inner = variance_plot.variance_grid(variance_a_values, variance_b_values)
+    fig_variance, ax_variance, variance_sliders = variance_plot.draw_variance_surface(
+        variance_a_values, variance_b_values, var_inner
     )
 
-    fig_a4_constant, ax_a4_constant = generalized_lebesgue.generalized_Lebegue_constant_withA(4)
-    fig_a5_constant, ax_a5_constant = generalized_lebesgue.generalized_Lebegue_constant_withA(5)
-    
     plt.show()
 
-    
+

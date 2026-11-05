@@ -1,3 +1,5 @@
+<h1 style="background-color: rgb(134, 227, 182); color: rgb(0, 0, 0)"> Cirtical Point Problem <h1>
+
 # Definitions
 
 Let $\{\tau_1, \tau_2, \dots, \tau_n\}$ be the arbitrary distinct ordered nodes with $\tau_i \in [-1, 1]$.
@@ -9,6 +11,8 @@ L_i^n(t) = \prod_{\substack{j=1\\j\ne i}}^n \frac{t-\tau_j}{\tau_i-\tau_j}, \qqu
 $$
 
 For convenience, define $D_i^n = \prod_{\substack{j=1\\j\ne i}}^n (\tau_i-\tau_j)$.
+
+
 
 ### Quadrature weight $\omega_i^n$ associated with $\tau_i$
 
@@ -55,6 +59,8 @@ F_0^n(t)=1-\int_{-1}^{t}\tilde L_1^n(s)\,ds,\qquad
 F_n^n(t)=\int_{-1}^{t}\tilde L_n^n(s)\,ds.
 $$
 
+<br><br><br>
+
 # Critical points of $F_i^n(t)$ with the ordered nodes $\{\tau_1,\tau_2,\dots,\tau_n\}$
 
 ## 1) $i=1,\dots,n-1$
@@ -87,6 +93,8 @@ $$
 
 There does not exist $t^*$ at the endpoint basis indices.
 
+<br><br><br>
+
 # Special cases of $t^*$
 
 ## 1) $\alpha=\beta$
@@ -102,6 +110,8 @@ so the linear equation determining the additional critical point has no real sol
 ## 2) $t^*=\tau_k$, $k\ne i$, $k\ne i+1$
 
 In this case, $\frac{d}{dt}F$ has a double root at $\tau_k$.
+
+   <br><br><br>
 
 # Sign of $\frac{d^2}{dt^2}F_i^n(\tau_k)$, $k\ne i$, $k\ne i+1$
 
@@ -155,6 +165,8 @@ $$
 
 Thus the table above also holds at $i=0$ (only $k>i+1$) and $i=n$ (only $k<i$). Together, it covers $i=0,\dots,n$ and the applicable node critical points.
 
+<br><br><br>
+
 # Position of $t^*$
 
 - t* is defined under $\omega \neq 0$
@@ -192,9 +204,13 @@ $\\ \Longrightarrow \exist \omega <0$
 1. Under the positive weights condition, $t^*$ is always the internal division point
 2. With distinct nodes, If $t^*$ is the external division point, then there exists  nonpositive weight.
 
+<br><br><br>
+
 # New notation of $t^*$
 
 Under the positive weight condition, $t^*$ is the internal point of $\tau_i$ and $\tau_{i+1}$. So from now on, we denote $t^*$ by $\tau_{i+0.5}$, because in many examples it is more understandable. It does not mean the geometrical midpoint of $\tau_i$ and $\tau_{i+1}$.
+
+<br><br><br>
 
 # $t^*$ is the local maximizer
 
@@ -207,6 +223,8 @@ $$
 $$
 
 Since $t^*=\tau_{i+0.5}$ is the unique critical point in $(\tau_i,\tau_{i+1})$, the derivative changes from positive to negative at $t^*$. Therefore, $t^*$ is a local maximum point of $F_i^n$.
+
+<br><br><br>
 
 # $t^*$ is not necessarily a global maximizer
 
@@ -240,6 +258,42 @@ Thus $t^*$ is not a global maximizer on $[-1,1]$.
 
 ![Basis functions for the symmetric six-node counterexample](critical_point_counterexample.png)
 
+
+<br><br><br>
+
+<h1 style="background-color: rgb(134, 227, 182); color: rgb(0, 0, 0)"> Minimize Variance Problem <h1>
+
+# Minimizing the varinace of the maximums of F
+
+We assume following things.
+- If the maximums of the bases has the similar values, then the curve is more predictable.
+- As same, If the variance of the maximuns of bases has the minimum value, then the curve is more predictable.
+- If the maximums of the inner bases has the similar values, then the minimums of the inner bases are also similar.
+
+
+<br><br><br>
+
+# Definitions
+
+### Inner bases
+we call the bases without the end index $F_1^n, F_2^n, \dots, F_{n-1}^n$ as the inner bases
+
+### Maximum of the basis
+Let $\tau$ is the strictly increaing node. <br>
+Define the maximum of the basis $F_i^n$ for $i = 0, 1, \dots, n$ 
+$$M_i^n(\tau) = \operatorname{max}_{t\in{-[-1,1]}} F_i^n(t)$$
+
+### Average and Variance of the maximums
+Define the average $\bar{M}(\tau)$ and the variance $\operatorname{Var}(\tau)$ of the maximums of the bases.
+
+<br><br><br>
+
+# Program Design
+1. Set $\tau$ 
+2. Get $\operatorname{Var}(\tau)$
+
+
+<br><br><br>
 
 # 고민
 
