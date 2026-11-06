@@ -26,7 +26,23 @@ def lagrange_basis(nodes):
 
 # 3. 가중치 w_i = integral L_i
 def weights(basis):
-    return [sp.integrate(L_i,(x,-1,1)) for L_i in basis]
+    w = []
+    has_negative_weight = False
+    has_zero_weight = False
+
+    for L_i in basis:
+        value = sp.integrate(L_i, (x, -1, 1))
+        w.append(value)
+        if value.is_zero is True:
+            has_zero_weight = True
+        elif value.is_zero is None and has_zero_weight is False:
+            has_zero_weight = None
+        if value.is_negative is True:
+            has_negative_weight = True
+        elif value.is_negative is None and has_negative_weight is False:
+            has_negative_weight = None
+
+    return w, has_negative_weight, has_zero_weight
 
 # 4. Normalized Lagrange
 # N_i = L_i / w_i
@@ -87,7 +103,7 @@ def get_New_Basis(nodes, *, basis_name=None):
             return cached
         
     lag = lagrange_basis(nodes)
-    w = weights(lag)
+    w, _, _ = weights(lag)
     # print(w)
     N = Normalized_Lagrange(lag, w)
     G = Cumulative_Lagrange(N)

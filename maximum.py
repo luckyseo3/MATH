@@ -19,7 +19,7 @@ def maximums_of_F(node):
             raise ValueError("Nodes must be distinct and strictly increasing")
 
     lagrange = basis.lagrange_basis(node)
-    weights = basis.weights(lagrange)
+    weights, _, _ = basis.weights(lagrange)
     if any(w.equals(0) is True for w in weights):
         raise ValueError("Quadrature weights must be nonzero")
     
@@ -77,13 +77,60 @@ def maximums_of_F(node):
     return M
 
 def variance_of_maximums_of_F(node):
-    """Return population variances with and without the endpoint functions."""
+    """Return population variances (without, with) the endpoint functions."""
     maxima = maximums_of_F(node)
 
     def variance(values):
         mean = sum(values) / len(values)
         return sp.simplify(sum((value - mean) ** 2 for value in values) / len(values))
 
-    return variance(maxima), variance(maxima[1:-1])
+    return variance(maxima[1:-1]), variance(maxima)
 
+# 변화한 노드의 weight이 0이 되는 경우 예외처리 해야함
+def compass_search(n, # 노드의 크기
+                   h, # 간격
+                   h_limit, # 종료 조건
+                   initial_node # 초기 노드
+                   ):
+    
+    min_node = initial_node
+    min_value, _ = variance_of_maximums_of_F(initial_node)
+    is_coordinatewise_stationary = True
+
+    node_history = [min_node]
+    min_history = [min_value]
+    h_history = [h]
+    history = [node_history, min_history, h_history]
+
+    while(h > h_limit):
+
+        for idx in range((n-2)//2):
+            left = 1 + idx
+            right = n-2 - idx
+            for sign in [-1, 1]:
+                node = initial_node[:]
+                n_ = node[right] + sign*h
+
+                if n_ <= 0 or n_ <= node[right - 1]: continue
+                if n_ >= node[right + 1]: continue
+
+                node[right] += sign*h
+                node[left]  -= sign*h
+                var, _ = variance_of_maximums_of_F(node)
+                if(var < min_value): 
+                    min_value = var
+                    min_node = node[:]
+                    is_coordinatewise_stationary = False
+
+        if(is_coordinatewise_stationary):
+            h /= 2
+        else:
+            initial_node = min_node[:]
+            is_coordinatewise_stationary = True
+
+        node_history.append(min_node)
+        min_history.append(min_value)
+        h_history.append(h)
+
+    return history
 

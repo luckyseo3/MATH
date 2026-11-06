@@ -74,6 +74,13 @@ if __name__ == "__main__":
         variance_a_values, variance_b_values, var_inner
     )
 
+    ##################################################################################################################
+    # 6️⃣ ESC 노드에서 시작해 분산을 줄이는 compass search
+    node_history, min_history, h_history = maximum.compass_search(
+        6, 0.1, 0.001, nodes.ESC_nodes(6).tolist()
+    )
+    print(f"compass search: min variance {min_history[-1]} at {node_history[-1]}")
+
     plt.show()
 
 

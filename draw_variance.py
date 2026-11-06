@@ -1,25 +1,55 @@
 """노드 {-1, -b, -a, a, b, 1}에서 a, b에 따른 내부 F_i 최댓값 분산을 3차원으로 그린다."""
+import json
+from pathlib import Path
+
 import numpy as np
 import sympy as sp
 
-import variance_cache
-from variance_cache import inner_variance  # noqa: F401  (기존 호출 호환)
+import generate_basis
+import maximum
 
 
-def variance_grid(a_values, b_values, *, n=6, workers=None):
-    """(a, b) 격자에서 양 끝을 제외한 분산을 variance_cache를 거쳐 구한다.
+def symmetric_nodes(n, params):
+    a, b = params
+    return [-1, -b, -a, *([0] if n % 2 else []), a, b, 1]
+
+
+def variance_grid(a_values, b_values, *, n=6):
+    """(a, b) 격자에서 양 끝을 제외한 분산을 variance_cache/n{n}/variance.json을 거쳐 구한다.
 
     n=6이면 노드 [-1, -b, -a, a, b, 1], n=7이면 [-1, -b, -a, 0, a, b, 1].
     a < b가 아니거나 가중치가 0이 되어 정의되지 않는 점은 NaN으로 둔다.
     """
-    if variance_cache.parameter_count(n) != 2:
+    if n not in (6, 7):
         raise ValueError("3D surface needs exactly two parameters (n = 6 or 7)")
-    pairs = [(a, b) for a in a_values for b in b_values]
-    values = variance_cache.get_variances(n, pairs, workers=workers)
-    return np.array(values, dtype=float).reshape(len(a_values), len(b_values))
+    path = Path(__file__).resolve().parent / 'variance_cache' / f'n{n}' / 'variance.json'
+    points = json.loads(path.read_text(encoding='utf-8'))['points'] if path.exists() else {}
+    computed = 0
+
+    Z = np.full((len(a_values), len(b_values)), np.nan)
+    for p, a in enumerate(a_values):
+        for q, b in enumerate(b_values):
+            a, b = sp.Rational(str(a)), sp.Rational(str(b))
+            if not 0 < a < b < 1:
+                continue
+            key = f"{a},{b}"
+            if key not in points:
+                try:
+                    exact, _ = maximum.variance_of_maximums_of_F(symmetric_nodes(n, (a, b)))
+                    points[key] = {'value': float(exact), 'exact': str(exact)}
+                except ValueError:  # 가중치가 0인 점
+                    points[key] = {'value': None, 'exact': None}
+                computed += 1
+            if points[key]['value'] is not None:
+                Z[p, q] = points[key]['value']
+
+    if computed:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps({'points': points}, indent=1), encoding='utf-8')
+    return Z
 
 
-def draw_variance_surface(a_values, b_values, Z, *, elev=25, azim=-130,
+def draw_variance_surface(a_values, b_values, Z, *, n=6, elev=25, azim=-130,
                           max_points=400, max_mesh=60):
     """마우스 드래그와 elev/azim 슬라이더로 돌려볼 수 있는 3차원 그래프.
 
@@ -30,9 +60,32 @@ def draw_variance_surface(a_values, b_values, Z, *, elev=25, azim=-130,
     from matplotlib.widgets import Slider
 
     A, B = np.meshgrid([float(v) for v in a_values], [float(v) for v in b_values], indexing="ij")
-    mask = ~np.isnan(Z)
+    Z = np.asarray(Z, dtype=float)
+    mask = np.isfinite(Z) & (Z > 0)
+    if not mask.any():
+        raise ValueError("At least one positive finite variance is required")
     # 분산이 0.003 ~ 50 정도로 퍼져 있어 log10 축으로 그린다.
-    L = np.log10(Z)
+    L = np.full_like(Z, np.nan)
+    L[mask] = np.log10(Z[mask])
+
+    # 기호 가중치를 한 번 계산하고 각 격자점에 정확한 매개변수를 대입한다.
+    a, b = sp.symbols('a b', real=True)
+    nodes = symmetric_nodes(n, (a, b))
+    weight_exprs, _, _ = generate_basis.weights(generate_basis.lagrange_basis(nodes))
+    negative_points, zero_points = [], []
+    for i, av in enumerate(a_values):
+        for j, bv in enumerate(b_values):
+            av = sp.Rational(str(av)) if isinstance(av, float) else sp.sympify(av)
+            bv = sp.Rational(str(bv)) if isinstance(bv, float) else sp.sympify(bv)
+            if not (0 < av < bv < 1):
+                continue
+            # weights의 판정 로직을 사용하면서 적분은 한 번만 수행한다.
+            substituted = [w.subs({a: av, b: bv}) / 2 for w in weight_exprs]
+            _, negative, zero = generate_basis.weights(substituted)
+            if zero is True:
+                zero_points.append((i, j))
+            elif negative is True and mask[i, j]:
+                negative_points.append((i, j))
 
     fig = plt.figure(figsize=(9, 8))
     ax = fig.add_axes([0.05, 0.18, 0.9, 0.77], projection="3d")
@@ -41,20 +94,28 @@ def draw_variance_surface(a_values, b_values, Z, *, elev=25, azim=-130,
     # 점이 적으면 삼각분할 곡면과 격자점을, 많으면 최대 max_mesh x max_mesh로 줄인
     # 격자 곡면만 그려 회전을 가볍게 한다. 최솟값 표시는 항상 전체 데이터 기준이다.
     if mask.sum() <= max_points:
-        ax.plot_trisurf(A[mask], B[mask], L[mask], cmap="viridis", alpha=0.85, edgecolor="none")
+        if mask.sum() >= 3:
+            ax.plot_trisurf(A[mask], B[mask], L[mask], cmap="viridis", alpha=0.85, edgecolor="none")
         ax.scatter(A[mask], B[mask], L[mask], color="black", s=10)
     else:
         # 정의되지 않은 점(a >= b)은 마스킹하고, 불투명 격자 곡면만 그린다.
         ax.plot_surface(A, B, np.ma.masked_invalid(L), cmap="viridis", edgecolor="none",
                         rcount=min(max_mesh, A.shape[0]), ccount=min(max_mesh, A.shape[1]),
                         antialiased=False)
-    p, q = np.unravel_index(np.nanargmin(Z), Z.shape)
+    for points, color, label in ((negative_points, 'blue', 'negative weight'),
+                                 (zero_points, 'yellow', 'zero weight (undefined variance)')):
+        if points:
+            rows, cols = np.array(points).T
+            heights = np.where(mask[rows, cols], L[rows, cols], np.nanmin(L))
+            ax.scatter(A[rows, cols], B[rows, cols], heights, color=color, s=25,
+                       edgecolors='black', label=label, depthshade=False)
+    p, q = np.unravel_index(np.argmin(np.where(mask, Z, np.inf)), Z.shape)
     ax.scatter([A[p, q]], [B[p, q]], [L[p, q]], color="red", s=60,
                label=f"min {Z[p, q]:.4g} at a={A[p, q]:.3g}, b={B[p, q]:.3g}")
     ax.set_xlabel("a")
     ax.set_ylabel("b")
     ax.set_zlabel("log10(variance)")
-    ax.set_title("Variance of max F_i (i = 1..5), nodes {-1, -b, -a, a, b, 1}, a < b")
+    ax.set_title(f"Variance of max F_i, n={n}, a < b")
     ax.legend(loc="upper left")
     ax.view_init(elev=elev, azim=azim)
 

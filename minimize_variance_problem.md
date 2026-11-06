@@ -1,8 +1,8 @@
-<h1 style="background-color: rgb(134, 227, 182); color: rgb(0, 0, 0)"> Cirtical Point Problem <h1>
+<h1 style="background-color: rgb(134, 227, 182); color: rgb(0, 0, 0)"> Critical Point Problem </h1>
 
 # Definitions
 
-Let $\{\tau_1, \tau_2, \dots, \tau_n\}$ be the arbitrary distinct ordered nodes with $\tau_i \in [-1, 1]$.
+Let $\{\tau_1, \tau_2, \dots, \tau_n\}$ be arbitrary distinct ordered nodes with $\tau_i \in [-1, 1]$.
 
 ### Lagrange polynomial $L_i^n(t)$ associated with $\tau_i$
 
@@ -111,7 +111,7 @@ so the linear equation determining the additional critical point has no real sol
 
 In this case, $\frac{d}{dt}F$ has a double root at $\tau_k$.
 
-   <br><br><br>
+<br><br><br>
 
 # Sign of $\frac{d^2}{dt^2}F_i^n(\tau_k)$, $k\ne i$, $k\ne i+1$
 
@@ -190,19 +190,19 @@ $
    \iff \alpha(-\beta) > 0 
 \\ \iff \alpha\beta < 0
 \\ \iff \omega_i^n \omega_{i+1}^n > 0 \qquad \because D_i^n D_{i+1}^n < 0
-\\ \iff \omega_i^n$ and $ \omega_{i+1}^n$ has the same sign.
+\\ \iff \omega_i^n$ and $ \omega_{i+1}^n$ have the same sign.
 
 ### 3. $t^*$ is the external division point of  $\tau_i$ and $\tau_{i+1}$.
 $
    \iff \alpha(-\beta) < 0 
 \\ \iff \alpha\beta > 0
 \\ \iff \omega_i^n \omega_{i+1}^n < 0 \qquad \because D_i^n D_{i+1}^n < 0
-\\ \iff \omega_i^n$ and $ \omega_{i+1}^n$ has different signs.
+\\ \iff \omega_i^n$ and $ \omega_{i+1}^n$ have different signs.
 $\\ \Longrightarrow \exist \omega <0$ 
 
 ### useful facts
 1. Under the positive weights condition, $t^*$ is always the internal division point
-2. With distinct nodes, If $t^*$ is the external division point, then there exists  nonpositive weight.
+2. With distinct nodes, if $t^*$ is the external division point, then there exists a nonpositive weight.
 
 <br><br><br>
 
@@ -261,36 +261,41 @@ Thus $t^*$ is not a global maximizer on $[-1,1]$.
 
 <br><br><br>
 
-<h1 style="background-color: rgb(134, 227, 182); color: rgb(0, 0, 0)"> Minimize Variance Problem <h1>
+<h1 style="background-color: rgb(134, 227, 182); color: rgb(0, 0, 0)"> Minimize Variance Problem </h1>
 
-# Minimizing the varinace of the maximums of F
+# Minimizing the variance of the maxima of F
 
-We assume following things.
-- If the maximums of the bases has the similar values, then the curve is more predictable.
-- As same, If the variance of the maximuns of bases has the minimum value, then the curve is more predictable.
-- If the maximums of the inner bases has the similar values, then the minimums of the inner bases are also similar.
+We make the following assumptions.
+- If the maxima of the basis functions are close to one another, the curve is more predictable.
+- Likewise, the smaller the variance of the maxima, the more predictable the curve.
+- If the maxima of the inner basis functions are close to one another, their minima are also close.
 
 
 <br><br><br>
 
 # Definitions
 
-### Inner bases
-we call the bases without the end index $F_1^n, F_2^n, \dots, F_{n-1}^n$ as the inner bases
+### Inner basis functions
+We call $F_1^n, F_2^n, \dots, F_{n-1}^n$, i.e., the basis functions excluding the endpoint indices $i=0$ and $i=n$, the *inner basis functions*.
 
-### Maximum of the basis
-Let $\tau$ is the strictly increaing node. <br>
-Define the maximum of the basis $F_i^n$ for $i = 0, 1, \dots, n$ 
-$$M_i^n(\tau) = \operatorname{max}_{t\in{-[-1,1]}} F_i^n(t)$$
+### Maximum of a basis function
+Let $\tau = (\tau_1, \dots, \tau_n)$ be a strictly increasing sequence of nodes. <br>
+For $i = 0, 1, \dots, n$, define the maximum of $F_i^n$ by
+$$M_i^n(\tau) = \max_{t\in[-1,1]} F_i^n(t).$$
 
-### Average and Variance of the maximums
-Define the average $\bar{M}(\tau)$ and the variance $\operatorname{Var}(\tau)$ of the maximums of the bases.
+### Average and variance of the maxima
+Define the average $\bar{M}(\tau)$ and the variance $\operatorname{Var}(\tau)$ of the maxima of the inner basis functions by
+
+$$
+\bar M(\tau)=\frac{1}{n-1}\sum_{i=1}^{n-1}M_i^n(\tau),\qquad
+\operatorname{Var}(\tau)=\frac{1}{n-1}\sum_{i=1}^{n-1}\bigl(M_i^n(\tau)-\bar M(\tau)\bigr)^2 .
+$$
 
 <br><br><br>
 
 # Program Design
-1. Set $\tau$ 
-2. Get $\operatorname{Var}(\tau)$
+1. Choose the nodes $\tau$.
+2. Compute $\operatorname{Var}(\tau)$.
 
 
 <br><br><br>

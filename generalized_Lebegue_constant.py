@@ -38,7 +38,7 @@ def generalized_constant_for_nodes(nodes, basis_name=None):
     result = constant_cache.load(identity, basis_name)
     if isinstance(result, (float, int)) and not isinstance(result, bool) and np.isfinite(result):
         return float(result)
-    weights = np.asarray(generator.weights(generator.lagrange_basis(nodes)), dtype=float)
+    weights = np.asarray(generator.weights(generator.lagrange_basis(nodes))[0], dtype=float)
     if not np.all(np.isfinite(weights)) or np.any(np.abs(weights) < 1e-12):
         raise ValueError('A normalization weight is zero or numerically near zero.')
     functions = generator.get_New_Basis(nodes, basis_name=basis_name)
