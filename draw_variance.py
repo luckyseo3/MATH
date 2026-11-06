@@ -5,7 +5,6 @@ from pathlib import Path
 import numpy as np
 import sympy as sp
 
-import generate_basis
 import maximum
 
 
@@ -35,8 +34,8 @@ def variance_grid(a_values, b_values, *, n=6):
             key = f"{a},{b}"
             if key not in points:
                 try:
-                    exact, _ = maximum.variance_of_maximums_of_F(symmetric_nodes(n, (a, b)))
-                    points[key] = {'value': float(exact), 'exact': str(exact)}
+                    value, _ = maximum.numeric_variance_of_maximums_of_F(symmetric_nodes(n, (a, b)))
+                    points[key] = {'value': float(value), 'exact': None}
                 except ValueError:  # 가중치가 0인 점
                     points[key] = {'value': None, 'exact': None}
                 computed += 1
@@ -49,10 +48,11 @@ def variance_grid(a_values, b_values, *, n=6):
     return Z
 
 
-def draw_variance_surface(a_values, b_values, Z, *, n=6, elev=25, azim=-130,
+def draw_variance_surface(a_values, b_values, Z, *, n=6, histories=None, elev=25, azim=-130,
                           max_points=400, max_mesh=60):
     """마우스 드래그와 elev/azim 슬라이더로 돌려볼 수 있는 3차원 그래프.
 
+    histories는 {이름: compass_search의 반환값}이며, 경로마다 다른 색의 작은 점으로 표시한다.
     반환값은 (figure, axes, sliders)이다. 슬라이더가 가비지 컬렉션되면
     동작하지 않으므로 호출한 쪽에서 sliders를 변수로 들고 있어야 한다.
     """
@@ -68,31 +68,12 @@ def draw_variance_surface(a_values, b_values, Z, *, n=6, elev=25, azim=-130,
     L = np.full_like(Z, np.nan)
     L[mask] = np.log10(Z[mask])
 
-    # 기호 가중치를 한 번 계산하고 각 격자점에 정확한 매개변수를 대입한다.
-    a, b = sp.symbols('a b', real=True)
-    nodes = symmetric_nodes(n, (a, b))
-    weight_exprs, _, _ = generate_basis.weights(generate_basis.lagrange_basis(nodes))
-    negative_points, zero_points = [], []
-    for i, av in enumerate(a_values):
-        for j, bv in enumerate(b_values):
-            av = sp.Rational(str(av)) if isinstance(av, float) else sp.sympify(av)
-            bv = sp.Rational(str(bv)) if isinstance(bv, float) else sp.sympify(bv)
-            if not (0 < av < bv < 1):
-                continue
-            # weights의 판정 로직을 사용하면서 적분은 한 번만 수행한다.
-            substituted = [w.subs({a: av, b: bv}) / 2 for w in weight_exprs]
-            _, negative, zero = generate_basis.weights(substituted)
-            if zero is True:
-                zero_points.append((i, j))
-            elif negative is True and mask[i, j]:
-                negative_points.append((i, j))
-
     fig = plt.figure(figsize=(9, 8))
-    ax = fig.add_axes([0.05, 0.18, 0.9, 0.77], projection="3d")
+    ax = fig.add_axes([0.05, 0.18, 0.9, 0.77], projection="3d", computed_zorder=False)
     # 드래그/슬라이더 회전 시 매 프레임 전체를 다시 그리므로, 촘촘한 격자에서는
     # (0.01 간격 약 4,700점에서 프레임당 0.75초) 화면이 멈춘 것처럼 보인다.
     # 점이 적으면 삼각분할 곡면과 격자점을, 많으면 최대 max_mesh x max_mesh로 줄인
-    # 격자 곡면만 그려 회전을 가볍게 한다. 최솟값 표시는 항상 전체 데이터 기준이다.
+    # 격자 곡면만 그려 회전을 가볍게 한다.
     if mask.sum() <= max_points:
         if mask.sum() >= 3:
             ax.plot_trisurf(A[mask], B[mask], L[mask], cmap="viridis", alpha=0.85, edgecolor="none")
@@ -102,21 +83,18 @@ def draw_variance_surface(a_values, b_values, Z, *, n=6, elev=25, azim=-130,
         ax.plot_surface(A, B, np.ma.masked_invalid(L), cmap="viridis", edgecolor="none",
                         rcount=min(max_mesh, A.shape[0]), ccount=min(max_mesh, A.shape[1]),
                         antialiased=False)
-    for points, color, label in ((negative_points, 'blue', 'negative weight'),
-                                 (zero_points, 'yellow', 'zero weight (undefined variance)')):
-        if points:
-            rows, cols = np.array(points).T
-            heights = np.where(mask[rows, cols], L[rows, cols], np.nanmin(L))
-            ax.scatter(A[rows, cols], B[rows, cols], heights, color=color, s=25,
-                       edgecolors='black', label=label, depthshade=False)
-    p, q = np.unravel_index(np.argmin(np.where(mask, Z, np.inf)), Z.shape)
-    ax.scatter([A[p, q]], [B[p, q]], [L[p, q]], color="red", s=60,
-               label=f"min {Z[p, q]:.4g} at a={A[p, q]:.3g}, b={B[p, q]:.3g}")
+    for index, (name, history) in enumerate((histories or {}).items()):
+        node_history, min_history, _ = history
+        history_a = [node[-3] for node in node_history]
+        history_b = [node[-2] for node in node_history]
+        ax.scatter(history_a, history_b, np.log10(np.array(min_history, dtype=float)),
+                   color=f"C{index % 10}", s=1, linewidths=0, depthshade=False, label=name)
     ax.set_xlabel("a")
     ax.set_ylabel("b")
     ax.set_zlabel("log10(variance)")
     ax.set_title(f"Variance of max F_i, n={n}, a < b")
-    ax.legend(loc="upper left")
+    if histories:
+        ax.legend(loc="upper left", markerscale=4)
     ax.view_init(elev=elev, azim=azim)
 
     # 마우스로 드래그해도 회전하며, 슬라이더로 정확한 각도를 지정할 수도 있다.
