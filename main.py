@@ -52,16 +52,6 @@ if __name__ == "__main__":
     ax_a.set_title(rf'n=6, Basis functions for $a={a_initial:.2f}$')
     ax_a.legend(loc="upper right")
 
-    ##################################################################################################################
-    # 4️⃣ 5개 노드 (-1, -a, 0, a, 1)의 기저와 일반화 르베그 함수.
-    five_node_basis = basis.get_New_Basis(
-        [-1, -a, 0, a, 1], basis_name='adjustable'
-    )
-    fig_five, ax_five, five_sliders = draw.draw_adjustable_basis(
-        [-1, -a, 0, a, 1], {a: tuple(a_scope)}
-    )
-    ax_five.set_title(rf'n=5,Basis functions for $a={a_initial:.2f}$')
-    ax_five.legend(loc="upper right")
 
     ##################################################################################################################
     # 5️⃣ 6개 노드 (-1, -b, -a, a, b, 1)에서 a, b에 따른 내부 F_1~F_5 최댓값 분산 (a < b인 점만 계산)
@@ -77,10 +67,15 @@ if __name__ == "__main__":
     ##################################################################################################################
     # 6️⃣ ESC 노드에서 시작해 분산을 줄이는 compass search
     node_history, min_history, h_history = maximum.compass_search(
-        6, 0.1, 0.001, nodes.ESC_nodes(6).tolist()
+        6, 0.1, 0.000001, nodes.ESC_nodes(6).tolist()
     )
-    print(f"compass search: min variance {min_history[-1]} at {node_history[-1]}")
+    print(f"{'step':>4} {'next h':>20} {'variance':>20}  nodes")
+    for step, (node, value, step_h) in enumerate(zip(node_history, min_history, h_history)):
+        node_text = ", ".join(f"{float(v):.20f}" for v in node)
+        print(f"{step:>4} {step_h:>20.15f} {float(value):>20.15e}  [{node_text}]")
+
+    # 탐색은 numpy로 하고 최종 노드만 sympy로 다시 확인한다.
+    sympy_variance, _ = maximum.variance_of_maximums_of_F(node_history[-1])
+    print(f"sympy check: {float(sympy_variance):.15e}")
 
     plt.show()
-
-

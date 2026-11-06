@@ -1,4 +1,5 @@
 import generate_basis as basis
+import numpy as np
 import sympy as sp
 
 
@@ -86,6 +87,63 @@ def variance_of_maximums_of_F(node):
 
     return variance(maxima[1:-1]), variance(maxima)
 
+def numeric_maximums_of_F(node):
+    """Return float maxima on [-1, 1] with the same candidates as maximums_of_F."""
+    node = np.array(node, dtype=float)
+    n = len(node)
+
+    weights = []
+    D = []
+    G = []  # G[i]의 계수 (높은 차수부터)
+    for i in range(n):
+        others = np.delete(node, i)
+        D.append(np.prod(node[i] - others))
+        L_i = np.poly(others) / D[i]
+        integral = np.polyint(L_i)
+        weights.append(np.polyval(integral, 1) - np.polyval(integral, -1))
+        if abs(weights[i]) < 1e-12:
+            raise ValueError("Quadrature weights must be nonzero")
+
+        G_i = integral / weights[i]
+        G_i[-1] -= np.polyval(G_i, -1) + 0.5
+        G.append(G_i)
+
+    G_extended = [np.array([0.5]), *G, np.array([-0.5])]
+
+    M = []  # F_i의 최댓값들을 저장할 리스트
+
+    for i in range(n + 1):
+        F_i = np.polysub(G_extended[i], G_extended[i + 1])
+        # 구간의 양 끝점도 전역 최댓값의 후보이다.
+        candidates = [-1.0, 1.0]
+
+        if i == 0:  # F_0의 임계점: node[1], ..., node[n-1]
+            candidates.extend(node[1:])
+
+        elif i == n:  # F_n의 임계점: node[0], ..., node[n-2]
+            candidates.extend(node[:-1])
+
+        else:
+            # 문서의 i, i+1은 Python의 i-1, i에 대응한다.
+            alpha = weights[i] / D[i-1]
+            beta = weights[i-1] / D[i]
+            candidates.extend(np.delete(node, [i-1, i]))
+
+            difference = alpha - beta
+            if difference != 0:
+                star = (alpha * node[i] - beta * node[i-1]) / difference
+                if -1 <= star <= 1:
+                    candidates.append(star)
+
+        M.append(np.max(np.polyval(F_i, candidates)))
+
+    return M
+
+def numeric_variance_of_maximums_of_F(node):
+    """Return float population variances (without, with) the endpoint functions."""
+    maxima = numeric_maximums_of_F(node)
+    return np.var(maxima[1:-1]), np.var(maxima)
+
 # 변화한 노드의 weight이 0이 되는 경우 예외처리 해야함
 def compass_search(n, # 노드의 크기
                    h, # 간격
@@ -94,7 +152,7 @@ def compass_search(n, # 노드의 크기
                    ):
     
     min_node = initial_node
-    min_value, _ = variance_of_maximums_of_F(initial_node)
+    min_value, _ = numeric_variance_of_maximums_of_F(initial_node)
     is_coordinatewise_stationary = True
 
     node_history = [min_node]
@@ -116,14 +174,14 @@ def compass_search(n, # 노드의 크기
 
                 node[right] += sign*h
                 node[left]  -= sign*h
-                var, _ = variance_of_maximums_of_F(node)
+                var, _ = numeric_variance_of_maximums_of_F(node)
                 if(var < min_value): 
                     min_value = var
                     min_node = node[:]
                     is_coordinatewise_stationary = False
 
         if(is_coordinatewise_stationary):
-            h /= 2
+            h /= 10
         else:
             initial_node = min_node[:]
             is_coordinatewise_stationary = True
