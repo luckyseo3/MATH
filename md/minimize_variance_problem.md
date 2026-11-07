@@ -291,11 +291,52 @@ $$
 \operatorname{Var}(\tau)=\frac{1}{n-1}\sum_{i=1}^{n-1}\bigl(M_i^n(\tau)-\bar M(\tau)\bigr)^2 .
 $$
 
+
 <br><br><br>
 
-# Program Design
-1. Choose the nodes $\tau$.
-2. Compute $\operatorname{Var}(\tau)$.
+# 탐색 방법
+
+### 고려 사항
+- 목적함수(분산)은 $\tau$에 따라 연속이지만 미분 불가능
+- 즉, Gradient Discnet 사용 어려움 
+- 분산을 하나 평가하는데 비용은 100ms 미만
+
+### 후보1 : grid search
+자유변수들의 격자점을 모두 탐색
+
+장점: 국소최솟값 문제를 고민 안해도 됨
+단점: 자유변수 개수 n에 따라 $격자 개수^n $만큼 탐색하여 차수가 증가할수록 비용이 많이 듦
+
+### 후보2 : compass search
+노드를 자유변수 하나만 +h, -h 로 움직여 후보를 생성
+자유 변수 n에 따라 총 2n개의 후보를 살펴보고 분산이 최소가 되는 노드로 이동
+
+장점: 간단한 구현, 낮은 비용
+단점: 대각선에 낮은 비용이 위치하는 경우, 놓칠 수 있음
+
+### 후보3 : compass search with diagonal
+compass search를 대각선을 포함하여 실행
+자유 변수 n개에 따라 총 $3^n - 1$개의 후보를 살펴봄
+
+장점: 간단한 구현
+단점: compass search보다 비싼 비용
+
+### 후보4 : Mesh Adaptive Direct Search
+n차원 격자점의 집합(mesh)의 간격과 poll의 크기, mesh의 후보점들을 기준에 따라 정하여 탐색하는 방법
+
+- 공부 더 필요함
+
+### 1. Compass Search
+
+1. 차수 n, 탐색 간격 h, 종료 조건 h_limit, 초기 노드 initial node 를 입력
+2. 초기 노드의 분산을 계산
+3. 하나의 자유변수에 +h, -h 연산을 수행한 후보 노드에 대해 분산을 계산
+4. 3을 모든 자유변수에 대해 반복
+5. 초기 분산과 후보 분산들 중 최솟값 탐색
+6. 최솟값이 나오는 노드가 초기 노드일 경우, 탐색 간격을 10분의 1로 조정
+7. 최솟값이 나오는 노드가 탐색 노드일 경우, 해당 노드를 초기 노드로 설정
+
+![alt text](image.png)
 
 
 <br><br><br>

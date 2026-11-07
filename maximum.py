@@ -87,6 +87,16 @@ def variance_of_maximums_of_F(node):
 
     return variance(maxima[1:-1]), variance(maxima)
 
+def numeric_weights(node):
+    """Return float quadrature weights of the nodes."""
+    node = np.array(node, dtype=float)
+    weights = []
+    for i in range(len(node)):
+        others = np.delete(node, i)
+        integral = np.polyint(np.poly(others) / np.prod(node[i] - others))
+        weights.append(np.polyval(integral, 1) - np.polyval(integral, -1))
+    return weights
+
 def numeric_maximums_of_F(node):
     """Return float maxima on [-1, 1] with the same candidates as maximums_of_F."""
     node = np.array(node, dtype=float)
