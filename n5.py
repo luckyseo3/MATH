@@ -74,11 +74,11 @@ if __name__ == "__main__":
         )
         histories[name] = history
         node_history, min_history, h_history = history
-        print(f"\n[{name}]")
-        print(f"{'step':>4} {'next h':>20} {'variance':>20}  nodes")
-        for step, (node, value, step_h) in enumerate(zip(node_history, min_history, h_history)):
-            node_text = ", ".join(f"{float(v):.20f}" for v in node)
-            print(f"{step:>4} {step_h:>20.15f} {float(value):>20.15e}  [{node_text}]")
+        # print(f"\n[{name}]")
+        # print(f"{'step':>4} {'next h':>20} {'variance':>20}  nodes")
+        # for step, (node, value, step_h) in enumerate(zip(node_history, min_history, h_history)):
+        #     node_text = ", ".join(f"{float(v):.20f}" for v in node)
+        #     print(f"{step:>4} {step_h:>20.15f} {float(value):>20.15e}  [{node_text}]")
 
         # 탐색은 numpy로 하고 최종 노드만 sympy로 다시 확인한다.
         sympy_variance, _ = maximum.variance_of_maximums_of_F(node_history[-1])

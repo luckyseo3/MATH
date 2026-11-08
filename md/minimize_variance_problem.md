@@ -326,7 +326,9 @@ n차원 격자점의 집합(mesh)의 간격과 poll의 크기, mesh의 후보점
 
 - 공부 더 필요함
 
-### 1. Compass Search
+<br><br><br>
+
+# Compass Search
 
 1. 차수 n, 탐색 간격 h, 종료 조건 h_limit, 초기 노드 initial node 를 입력
 2. 초기 노드의 분산을 계산
@@ -338,6 +340,59 @@ n차원 격자점의 집합(mesh)의 간격과 poll의 크기, mesh의 후보점
 
 ![alt text](image.png)
 
+---
+
+### n = 4
+
+![alt text](image-1.png)
+
+  93    0.000000000100000 2.333690955214700e-19  [-1.00000000000000000000, -0.42818182699999973728, 0.42818182699999973728, 1.00000000000000000000]
+[case3] a=0.42818183, sympy check: 2.333688426932632e-19
+
+---
+
+### n=5
+
+![alt text](image-2.png)
+[ESC] a=0.61525633, sympy check: 2.467236153920099e-19
+[case1] a=0.36343098, sympy check: 1.971465173421264e-18
+[case2] a=0.36343098, sympy check: 1.971466108732261e-18
+[case3] a=0.61525634, sympy check: 4.025324281057727e-21
+[case4] a=0.61525634, sympy check: 4.025370066276577e-21
+[case5] a=0.82468554, sympy check: 8.877902265598494e-18
+
+
+![alt text](image-3.png)
+![alt text](image-4.png)
+![alt text](image-5.png)
+
+---
+
+### n=6
+
+![alt text](image-6.png)
+![alt text](image-7.png)
+![alt text](image-8.png)
+
+sympy check: 1.806596360179689e+00
+sympy check: 1.356292541170561e-02
+sympy check: 3.425611140052588e-08
+sympy check: 1.591464508424902e-10
+
+![alt text](image-9.png)
+![alt text](image-10.png)
+
+---
+
+### 관찰 결과
+
+분산의 국소 최솟값이 여러개 존재하더라도 전역 최솟값은 양수 영역에서 나타날 것이다.
+-> n = 7 인 경우, 그렇지 않음이 나타남
+-> 1. compass serach의 한계로 인해 명제가 참이지만 그렇게 보이지 않음
+-> 2. 전역 최솟값은 여러개 존재할 수 있음
+
+그렇다면 새로운 추측
+양수 가중치 영역에서 국소 최솟값은 하나이다?
 
 <br><br><br>
 
