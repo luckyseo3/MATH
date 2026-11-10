@@ -8,6 +8,9 @@ import draw_basis as draw
 import maximum
 import draw_variance as variance_plot
 
+# 격자 간격은 1/GRID_N이다.
+GRID_N = 500
+
 if __name__ == "__main__":
 
     # 생성 함수를 전달하면 선택한 방식과 n에 맞춰 기저를 새로 계산한다.
@@ -53,6 +56,13 @@ if __name__ == "__main__":
     )
     ax_a.set_title(rf'n=8, Basis functions for $a={a_initial:.2f}$')
     ax_a.legend(loc="upper right")
+
+    ##################################################################################################################
+    # 3️⃣ 노드 (-1, -c, -b, -a, 0, a, b, c, 1)에서 a, b, c에 따른 내부 F_1~F_8 최댓값 분산
+    # 유리수 격자점에서 Fraction으로 오차 없이 계산하며, 분산이 작을수록 점이 크다.
+    # 결과는 variance_cache/n9/N{GRID_N}/에 저장되어 중단해도 이어서 계산한다.
+    variance_plot.variance_volume(GRID_N, n=9)
+    fig_variance, ax_variance, variance_sliders = variance_plot.draw_variance_volume(GRID_N, n=9)
 
     # initial_node = nodes.ESC_nodes(8)
     # history = maximum.compass_search(8, 0.01, 1e-6, initial_node.tolist())

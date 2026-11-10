@@ -22,6 +22,13 @@ if __name__ == "__main__":
         "case4": np.array([-1, -0.80, -0.1, 0, 0.1, 0.80, 1]),
         "case5": np.array([-1, -0.90, -0.8, 0, 0.8, 0.90, 1]),
         "case6": np.array([-1, -0.50, -0.1, 0, 0.1, 0.50, 1]),
+        "ESC optimal": np.array([-1.00000000000000000000, -0.79278273580483960004, -0.42562886791263354613, 0.00000000000000000000, 0.42562886791263365716, 0.79278273580484004412, 1.00000000000000000000]),
+        "case1 optimal": np.array([-1.00000000000000000000, -0.87551500000000004320, -0.28348400000000023580, 0.00000000000000000000, 0.28348400000000023580, 0.87551500000000004320, 1.00000000000000000000]),
+        "case2 optimal": np.array([-1.00000000000000000000, -0.91087000000000273303, -0.49232000000000986084, 0.00000000000000000000, 0.49232000000000986084, 0.91087000000000273303, 1.00000000000000000000]),
+        "case3 optimal": np.array([-1.00000000000000000000, -0.75110099999999946352, -0.23670000000000004925, 0.00000000000000000000, 0.23670000000000004925, 0.75110099999999946352, 1.00000000000000000000]),
+        "case4 optimal": np.array([-1.00000000000000000000, -0.75110099999999946352, -0.23670000000000004925, 0.00000000000000000000, 0.23670000000000004925, 0.75110099999999946352, 1.00000000000000000000]),
+        # "case5 optimal": np.array([-1.00000000000000000000, -0.75110099999999946352, -0.23670000000000004925, 0.00000000000000000000, 0.23670000000000004925, 0.75110099999999946352, 1.00000000000000000000]),
+        # "case6 optimal": np.array([-1.00000000000000000000, -0.75110099999999946352, -0.23670000000000004925, 0.00000000000000000000, 0.23670000000000004925, 0.75110099999999946352, 1.00000000000000000000]),
     }
 
     ##################################################################################################################
@@ -54,38 +61,38 @@ if __name__ == "__main__":
     ax_a.legend(loc="upper right")
 
 
-    ##################################################################################################################
-    # 5️⃣ 6개 노드 (-1, -b, -a, a, b, 1)에서 a, b에 따른 내부 F_1~F_5 최댓값 분산 (a < b인 점만 계산)
-    # 마우스 드래그 또는 elev/azim 슬라이더로 그래프를 돌려볼 수 있다.
-    # 결과는 variance_cache/n6/variance.json에 저장되어 같은 점은 다시 계산하지 않는다.
-    variance_a_values = [sp.Rational(k, 100) for k in range(1, 98)]   # 0.01 ~ 0.97
-    variance_b_values = [sp.Rational(k, 100) for k in range(2, 99)]  # 0.02 ~ 0.98
-    var_inner = variance_plot.variance_grid(variance_a_values, variance_b_values, n=7)
+    # ##################################################################################################################
+    # # 5️⃣ 6개 노드 (-1, -b, -a, a, b, 1)에서 a, b에 따른 내부 F_1~F_5 최댓값 분산 (a < b인 점만 계산)
+    # # 마우스 드래그 또는 elev/azim 슬라이더로 그래프를 돌려볼 수 있다.
+    # # 결과는 variance_cache/n6/variance.json에 저장되어 같은 점은 다시 계산하지 않는다.
+    # variance_a_values = [sp.Rational(k, 100) for k in range(1, 98)]   # 0.01 ~ 0.97
+    # variance_b_values = [sp.Rational(k, 100) for k in range(2, 99)]  # 0.02 ~ 0.98
+    # var_inner = variance_plot.variance_grid(variance_a_values, variance_b_values, n=7)
 
-    ##################################################################################################################
-    # 6️⃣ 끝점을 포함하는 노드들에서 시작해 분산을 줄이는 compass search
-    histories = {}
-    for name in ("ESC","case1","case2","case3","case4","case5","case6"):
-        initial_node = basis_sources[name]
-        initial_node[0], initial_node[3], initial_node[-1] = -1, 0, 1
-        history = maximum.compass_search(
-            7, 0.001, 0.000001, initial_node.tolist()
-        )
-        histories[name] = history
-        node_history, min_history, h_history = history
-        # print(f"\n[{name}]")
-        # print(f"{'step':>4} {'next h':>20} {'variance':>20}  nodes")
-        # for step, (node, value, step_h) in enumerate(zip(node_history, min_history, h_history)):
-        #     node_text = ", ".join(f"{float(v):.20f}" for v in node)
-        #     print(f"{step:>4} {step_h:>20.15f} {float(value):>20.15e}  [{node_text}]")
+    # ##################################################################################################################
+    # # 6️⃣ 끝점을 포함하는 노드들에서 시작해 분산을 줄이는 compass search
+    # histories = {}
+    # for name in ("ESC","case1","case2","case3","case4","case5","case6"):
+    #     initial_node = basis_sources[name]
+    #     initial_node[0], initial_node[3], initial_node[-1] = -1, 0, 1
+    #     history = maximum.compass_search(
+    #         7, 0.001, 0.000001, initial_node.tolist()
+    #     )
+    #     histories[name] = history
+    #     node_history, min_history, h_history = history
+    #     print(f"\n[{name}]")
+    #     print(f"{'step':>4} {'next h':>20} {'variance':>20}  nodes")
+    #     for step, (node, value, step_h) in enumerate(zip(node_history, min_history, h_history)):
+    #         node_text = ", ".join(f"{float(v):.20f}" for v in node)
+    #         print(f"{step:>4} {step_h:>20.15f} {float(value):>20.15e}  [{node_text}]")
 
-        # 탐색은 numpy로 하고 최종 노드만 sympy로 다시 확인한다.
-        sympy_variance, _ = maximum.variance_of_maximums_of_F(node_history[-1])
-        print(f"sympy check: {float(sympy_variance):.15e}")
+    #     # 탐색은 numpy로 하고 최종 노드만 sympy로 다시 확인한다.
+    #     sympy_variance, _ = maximum.variance_of_maximums_of_F(node_history[-1])
+    #     print(f"sympy check: {float(sympy_variance):.15e}")
 
-    # 분산 곡면 위에 탐색 경로들을 색깔별로 표시한다.
-    fig_variance, ax_variance, variance_sliders = variance_plot.draw_variance_surface(
-        variance_a_values, variance_b_values, var_inner, n=7, histories=histories
-    )
+    # # 분산 곡면 위에 탐색 경로들을 색깔별로 표시한다.
+    # fig_variance, ax_variance, variance_sliders = variance_plot.draw_variance_surface(
+    #     variance_a_values, variance_b_values, var_inner, n=7, histories=histories
+    # )
 
     plt.show()

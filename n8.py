@@ -5,6 +5,7 @@ import sympy as sp
 import generate_nodes as nodes
 import generate_basis as basis
 import draw_basis as draw
+import maximum
 import draw_variance as variance_plot
 
 # 격자 간격은 1/GRID_N이다.
@@ -57,6 +58,42 @@ if __name__ == "__main__":
     # 유리수 격자점에서 Fraction으로 오차 없이 계산하며, 분산이 작을수록 점이 크다.
     # 결과는 variance_cache/n8/N{GRID_N}/에 저장되어 중단해도 이어서 계산한다.
     variance_plot.variance_volume(GRID_N, n=8)
-    fig_variance, ax_variance, variance_sliders = variance_plot.draw_variance_volume(GRID_N, n=8)
+
+    ##################################################################################################################
+    # 4️⃣ 지정한 (a, b, c)에서 시작해 분산을 줄이는 compass search
+    # 결과는 variance_cache/n8/compass.json에 저장되어 같은 탐색은 다시 계산하지 않는다.
+    search_starts = {
+        "outer 1": (0.1, 0.2, 0.9),
+        "outer 2": (0.1, 0.2, 0.5),
+        "inner 1": (0.1, 0.2, 0.7),
+        "outer 3": (0.3, 0.4, 0.5),
+        "inner 2": (0.3, 0.5, 0.7),
+        "outer 4": (0.3, 0.8, 0.9),
+        "outer 5": (0.5, 0.6, 0.7),
+        "outer 6": (0.5, 0.7, 0.8),
+        "inner 3 (ESC)": tuple(nodes.ESC_nodes(8)[4:7].tolist()),
+        "inner 4": (0.03, 0.21, 0.68),
+        "inner 5": (0.26, 0.32, 0.76),
+        "inner 6": (0.03, 0.47, 0.68),
+        "inner 7": (0.31, 0.77, 0.88),
+    }
+    histories = {}
+    print(f"{'start':>14} {'positive':>8} {'steps':>6} {'a':>12} {'b':>12} {'c':>12} {'variance':>22} {'positive':>8}")
+    for name, params in search_starts.items():
+        initial_node = [float(value) for value in variance_plot.symmetric_nodes(8, params)]
+        history = variance_plot.cached_compass_search(8, 0.001, 0.000001, initial_node)
+        histories[name] = history
+
+        # 탐색은 numpy로 하고 시작 노드와 최종 노드만 Fraction으로 다시 확인한다.
+        _, start_weights = maximum.exact_maximums_and_weights(initial_node)
+        final_node = history[0][-1]
+        final_maxima, final_weights = maximum.exact_maximums_and_weights(final_node)
+        print(f"{name:>14} {str(min(start_weights) > 0):>8} {len(history[0]) - 1:>6} "
+              f"{final_node[-4]:>12.8f} {final_node[-3]:>12.8f} {final_node[-2]:>12.8f} "
+              f"{float(maximum.exact_variance(final_maxima[1:-1])):>22.15e} {str(min(final_weights) > 0):>8}")
+
+    fig_variance, ax_variance, variance_sliders = variance_plot.draw_variance_volume(
+        GRID_N, n=8, histories=histories
+    )
 
     plt.show()
