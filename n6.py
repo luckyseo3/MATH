@@ -61,10 +61,13 @@ if __name__ == "__main__":
     ##################################################################################################################
     # 5️⃣ 6개 노드 (-1, -b, -a, a, b, 1)에서 a, b에 따른 내부 F_1~F_5 최댓값 분산 (a < b인 점만 계산)
     # 마우스 드래그 또는 elev/azim 슬라이더로 그래프를 돌려볼 수 있다.
-    # 결과는 variance_cache/n6/variance.json에 저장되어 같은 점은 다시 계산하지 않는다.
-    variance_a_values = [sp.Rational(k, 100) for k in range(1, 98)]   # 0.01 ~ 0.97
-    variance_b_values = [sp.Rational(k, 100) for k in range(2, 99)]  # 0.02 ~ 0.98
-    var_inner = variance_plot.variance_grid(variance_a_values, variance_b_values)
+    # 간격 1/GRID_N 격자에서 Fraction으로 오차 없이 계산한다.
+    # 결과는 variance_cache/n6/N{GRID_N}/에 저장되어 중단해도 이어서 계산한다.
+    GRID_N = 1000
+    variance_plot.variance_plane(GRID_N, n=6)
+    # 각 격자점에서 F_1~F_5의 최댓값을 주는 후보(t*, ±1, tau_j)도 정확히 구한다.
+    # 후보가 바뀌는 곳이 분산이 미분 불가능할 수 있는 경계이며, 곡면 위에 흰 선으로 표시된다.
+    variance_plot.active_plane(GRID_N, n=6)
 
     ##################################################################################################################
     # 6️⃣ 끝점을 포함하는 노드들에서 시작해 분산을 줄이는 compass search
@@ -85,9 +88,11 @@ if __name__ == "__main__":
         sympy_variance, _ = maximum.variance_of_maximums_of_F(node_history[-1])
         print(f"sympy check: {float(sympy_variance):.15e}")
 
-    # 분산 곡면 위에 탐색 경로들을 색깔별로 표시한다.
-    fig_variance, ax_variance, variance_sliders = variance_plot.draw_variance_surface(
-        variance_a_values, variance_b_values, var_inner, histories=histories
+    # 분산 곡면 위에 탐색 경로들을 색깔별로 표시한다. zoom 슬라이더나 마우스 휠로 최솟값 근처를 확대한다.
+    fig_variance, ax_variance, variance_sliders = variance_plot.draw_variance_plane(
+        GRID_N, n=6, histories=histories
     )
+    # (a, b) 평면을 최댓값 후보 조합별로 색칠한 지도
+    # fig_regions, ax_regions = variance_plot.draw_active_regions(GRID_N, n=6, histories=histories)
 
     plt.show()
