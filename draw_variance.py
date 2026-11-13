@@ -657,7 +657,9 @@ def draw_active_regions(N, *, n=6, histories=None):
     order = sorted(range(len(names)), key=lambda k: -(ids == k).sum())
     rank = np.full(len(names), -1)
     rank[order] = np.arange(len(order))
-    base = plt.get_cmap("tab10")(np.arange(len(order)) % 10)
+    # 영역이 10개를 넘으면 tab10 색이 겹치므로 tab20을 쓴다.
+    palette = "tab10" if len(order) <= 10 else "tab20"
+    base = plt.get_cmap(palette)(np.arange(len(order)) % plt.get_cmap(palette).N)
     cmap = ListedColormap(base)
     cmap.set_bad("white")
     shown = np.ma.masked_less(np.where(ids >= 0, rank[ids], -1), 0).astype(float)
@@ -691,7 +693,7 @@ def draw_active_regions(N, *, n=6, histories=None):
 
     handles = [Patch(color=base[r], label=f"{label_text(names[k])}  {int((ids == k).sum()):,}")
                for r, k in enumerate(order)]
-    handles += [plt.Line2D([], [], color="black", linestyle=style, label=f"ω_{k + 1} = ω_{n - k} = 0")
+    handles += [plt.Line2D([], [], color="black", linestyle=style, label=f"ω_{k + 1} = 0" if 2 * k + 1 == n else f"ω_{k + 1} = ω_{n - k} = 0")
                 for k, style in zip(range((n + 1) // 2), ("-", "--", "-.", ":"))]
     handles += [plt.Line2D([], [], marker="o", markerfacecolor="none", markeredgecolor="red", linestyle="",
                            label=f"exact tie ({len(tie_i)})"),

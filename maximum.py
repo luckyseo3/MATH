@@ -247,15 +247,96 @@ def numeric_variance_of_maximums_of_F(node):
     maxima = numeric_maximums_of_F(node)
     return np.var(maxima[1:-1]), np.var(maxima)  # 평균, 편차, 제곱과 합산에서 반올림되며 입력 최댓값의 오차도 전파된다.
 
+def precise_maximums_and_weights(node, dps=40):
+    """exact_maximums_and_weights와 같은 후보에서 mpmath(dps자리)로 최댓값과 가중치를 구한다.
+
+    float(numeric_maximums_of_F)는 n=16에서 약 1e-7, n=20에서 약 1e-4의 오차가 생기지만,
+    dps=40이면 n=20에서도 Fraction 정확값과 15자리 이상 일치한다. Fraction보다 수백 배 빠르다.
+    float 노드는 그 float 값 그대로(반올림 없이) mpf로 바꾼다.
+    """
+    import mpmath as mp
+
+    with mp.workdps(dps):
+        node = [mp.mpf(value) for value in node]
+        n = len(node)
+
+        def value_at(polynomial, point):
+            result = mp.mpf(0)
+            for coefficient in reversed(polynomial):
+                result = result * point + coefficient
+            return result
+
+        weights, D, G = [], [], []
+        for i in range(n):
+            polynomial = [mp.mpf(1)]
+            D_i = mp.mpf(1)
+            for j in range(n):
+                if j == i:
+                    continue
+                shifted = [mp.mpf(0), *polynomial]  # polynomial * t
+                for k, coefficient in enumerate(polynomial):
+                    shifted[k] -= coefficient * node[j]
+                polynomial = shifted
+                D_i *= node[i] - node[j]
+            integral = [mp.mpf(0)] + [c / (D_i * (k + 1)) for k, c in enumerate(polynomial)]
+            weight = value_at(integral, 1) - value_at(integral, -1)
+            if weight == 0:
+                raise ValueError("Quadrature weights must be nonzero")
+            G_i = [c / weight for c in integral]
+            G_i[0] -= value_at(G_i, -1) + mp.mpf(1) / 2
+            weights.append(weight)
+            D.append(D_i)
+            G.append(G_i)
+
+        G_extended = [[mp.mpf(1) / 2], *G, [-mp.mpf(1) / 2]]
+        M = []
+        for i in range(n + 1):
+            left, right = G_extended[i], G_extended[i + 1]
+            F_i = [(left[k] if k < len(left) else 0) - (right[k] if k < len(right) else 0)
+                   for k in range(max(len(left), len(right)))]
+            candidates = [mp.mpf(-1), mp.mpf(1)]
+            if i == 0:
+                candidates.extend(node[1:])
+            elif i == n:
+                candidates.extend(node[:-1])
+            else:
+                alpha = weights[i] / D[i-1]
+                beta = weights[i-1] / D[i]
+                candidates.extend(node[j] for j in range(n) if j not in (i-1, i))
+                difference = alpha - beta
+                if difference != 0:
+                    star = (alpha * node[i] - beta * node[i-1]) / difference
+                    if -1 <= star <= 1:
+                        candidates.append(star)
+            M.append(max(value_at(F_i, point) for point in candidates))
+        return M, weights
+
+def precise_variance_of_maximums_of_F(node, dps=40):
+    """precise_maximums_and_weights로 구한 분산 (내부, 끝점 포함)을 float로 반환한다.
+
+    분산 자체를 dps자리로 계산한 뒤 float로 바꾸므로 상대오차는 약 1e-16이다.
+    """
+    import mpmath as mp
+
+    with mp.workdps(dps):
+        M, _ = precise_maximums_and_weights(node, dps)
+
+        def variance(values):
+            mean = sum(values) / len(values)
+            return sum((value - mean) ** 2 for value in values) / len(values)
+
+        return float(variance(M[1:-1])), float(variance(M))
+
 # 변화한 노드의 weight이 0이 되는 경우 예외처리 해야함
 def compass_search(n, # 노드의 크기
                    h, # 간격
                    h_limit, # 종료 조건
-                   initial_node # 초기 노드
+                   initial_node, # 초기 노드
+                   variance_function=numeric_variance_of_maximums_of_F # 분산 계산 함수 (n >= 16이면 precise_variance_of_maximums_of_F 권장)
                    ):
-    
+
     min_node = initial_node
-    min_value, _ = numeric_variance_of_maximums_of_F(initial_node)
+    min_value, _ = variance_function(initial_node)
     is_coordinatewise_stationary = True
 
     node_history = [min_node]
@@ -277,7 +358,7 @@ def compass_search(n, # 노드의 크기
 
                 node[right] += sign*h
                 node[left]  -= sign*h
-                var, _ = numeric_variance_of_maximums_of_F(node)
+                var, _ = variance_function(node)
                 if(var < min_value):   # 분산 차이가 수치 오차 수준이면 개선 여부가 뒤바뀔 수 있다.
                     min_value = var
                     min_node = node[:]
