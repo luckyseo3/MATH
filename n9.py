@@ -65,7 +65,7 @@ if __name__ == "__main__":
     fig_variance, ax_variance, variance_sliders = variance_plot.draw_variance_volume(GRID_N, n=9)
 
     # initial_node = nodes.ESC_nodes(8)
-    # history = maximum.compass_search(8, 0.01, 1e-6, initial_node.tolist())
+    # history = maximum.compass_search_ver3(8, 0.01, 1e-6, initial_node.tolist())
 
     # node_history, min_history, h_history = history
     # print(f"{'step':>4} {'next h':>20} {'variance':>20}  nodes")

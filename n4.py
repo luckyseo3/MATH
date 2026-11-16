@@ -63,7 +63,7 @@ if __name__ == "__main__":
     for name in ("ESC","case1","case2","case3","case4","case5"):
         initial_node = basis_sources[name]
         initial_node[0], initial_node[-1] = -1, 1
-        history = maximum.compass_search(
+        history = maximum.compass_search_ver3(
             4, 0.001, 0.000000001, initial_node.tolist()
         )
         histories[name] = history
@@ -74,9 +74,10 @@ if __name__ == "__main__":
             node_text = ", ".join(f"{float(v):.20f}" for v in node)
             print(f"{step:>4} {step_h:>20.15f} {float(value):>20.15e}  [{node_text}]")
 
-        # 탐색은 numpy로 하고 최종 노드만 sympy로 다시 확인한다.
-        sympy_variance, _ = maximum.variance_of_maximums_of_F(node_history[-1])
-        print(f"[{name}] a={node_history[-1][-2]:.8f}, sympy check: {float(sympy_variance):.15e}")
+        # 탐색은 mpmath로 하고 최종 노드만 Fraction 정확값으로 다시 확인한다.
+        exact_maxima, _ = maximum.exact_maximums_and_weights(node_history[-1])
+        exact_variance = maximum.exact_variance(exact_maxima[1:-1])
+        print(f"[{name}] a={node_history[-1][-2]:.8f}, exact check: {float(exact_variance):.15e}")
 
     # 분산 곡선 위에 탐색 경로들을 색깔별로 표시한다.
     fig_variance, ax_variance = variance_plot.draw_variance_curve(

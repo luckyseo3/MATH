@@ -2,8 +2,6 @@
 
 - 초깃값: ESC 노드를 정확히 대칭으로 맞춘 것 (끝점 ±1, 홀수 n이면 가운데 0)
 - 분산 계산: maximum.precise_variance_of_maximums_of_F (mpmath DPS자리)
-  float(numeric_variance_of_maximums_of_F)는 n=16에서 최댓값 오차가 약 1e-7, n=20에서 약 1e-4이고,
-  ESC의 분산(약 5e-5)과 오차가 비슷해져 개선 여부를 판정할 수 없으므로 쓰지 않는다.
 - 결과는 variance_cache/nBig/n{n}.json에 저장되어, 설정이 같으면 다시 계산하지 않는다.
   n마다 별도 프로세스에서 병렬로 계산한다.
 - 계산 중에는 SAVE_INTERVAL초마다 variance_cache/nBig/n{n}.partial.json에 탐색 상태를 저장하고 진행 상황을 출력한다.

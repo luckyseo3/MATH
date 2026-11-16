@@ -73,7 +73,7 @@ if __name__ == "__main__":
     # 6️⃣ 끝점을 포함하는 노드들에서 시작해 분산을 줄이는 compass search
     histories = {}
     for name in ("case1", "case2", "case3", "ESC"):
-        history = maximum.compass_search(
+        history = maximum.compass_search_ver3(
             6, 0.001, 0.000001, basis_sources[name].tolist()
         )
         histories[name] = history
@@ -84,15 +84,16 @@ if __name__ == "__main__":
         #     node_text = ", ".join(f"{float(v):.20f}" for v in node)
         #     print(f"{step:>4} {step_h:>20.15f} {float(value):>20.15e}  [{node_text}]")
 
-        # 탐색은 numpy로 하고 최종 노드만 sympy로 다시 확인한다.
-        sympy_variance, _ = maximum.variance_of_maximums_of_F(node_history[-1])
-        print(f"sympy check: {float(sympy_variance):.15e}")
+        # 탐색은 mpmath로 하고 최종 노드만 Fraction 정확값으로 다시 확인한다.
+        exact_maxima, _ = maximum.exact_maximums_and_weights(node_history[-1])
+        exact_variance = maximum.exact_variance(exact_maxima[1:-1])
+        print(f"exact check: {float(exact_variance):.15e}")
 
     # 분산 곡면 위에 탐색 경로들을 색깔별로 표시한다. zoom 슬라이더나 마우스 휠로 최솟값 근처를 확대한다.
     fig_variance, ax_variance, variance_sliders = variance_plot.draw_variance_plane(
         GRID_N, n=6, histories=histories
     )
     # (a, b) 평면을 최댓값 후보 조합별로 색칠한 지도
-    # fig_regions, ax_regions = variance_plot.draw_active_regions(GRID_N, n=6, histories=histories)
+    fig_regions, ax_regions = variance_plot.draw_active_regions(GRID_N, n=6, histories=histories)
 
     plt.show()

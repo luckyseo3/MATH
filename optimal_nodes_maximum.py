@@ -4,7 +4,6 @@
 - n = 4 ~ 9: compass_search_ver3를 직접 실행한 결과 (2026-11-14)
 - n = 10 ~ 15: nBig.py의 결과 (variance_cache/nBig/n{n}.json)
 - 최댓값은 maximum.precise_maximums_and_weights로 계산한다.
-  float(maximums_of_F)는 n이 커지면 오차가 커진다 (n = 16에서 약 1e-7).
 """
 import maximum
 
