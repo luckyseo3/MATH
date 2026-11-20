@@ -62,6 +62,8 @@ if __name__ == "__main__":
     # 유리수 격자점에서 Fraction으로 오차 없이 계산하며, 분산이 작을수록 점이 크다.
     # 결과는 variance_cache/n9/N{GRID_N}/에 저장되어 중단해도 이어서 계산한다.
     variance_plot.variance_volume(GRID_N, n=9)
+    # 탐색 경로를 그리려면 histories={이름: compass_search_ver3의 반환값}을 넘긴다.
+    # 그러면 "history" 체크박스가 생기고, show_histories=False로 처음에 숨길 수 있다.
     fig_variance, ax_variance, variance_sliders = variance_plot.draw_variance_volume(GRID_N, n=9)
 
     # initial_node = nodes.ESC_nodes(8)
