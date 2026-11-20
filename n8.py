@@ -78,22 +78,24 @@ if __name__ == "__main__":
         "inner 7": (0.31, 0.77, 0.88),
     }
     histories = {}
-    print(f"{'start':>14} {'positive':>8} {'steps':>6} {'a':>12} {'b':>12} {'c':>12} {'variance':>22} {'positive':>8}")
-    for name, params in search_starts.items():
-        initial_node = [float(value) for value in variance_plot.symmetric_nodes(8, params)]
-        history = variance_plot.cached_compass_search(8, 0.001, 0.000001, initial_node)
-        histories[name] = history
+    # print(f"{'start':>14} {'positive':>8} {'steps':>6} {'a':>12} {'b':>12} {'c':>12} {'variance':>22} {'positive':>8}")
+    # for name, params in search_starts.items():
+    #     initial_node = [float(value) for value in variance_plot.symmetric_nodes(8, params)]
+    #     history = variance_plot.cached_compass_search(8, 0.001, 0.000001, initial_node)
+    #     histories[name] = history
 
-        # 탐색은 numpy로 하고 시작 노드와 최종 노드만 Fraction으로 다시 확인한다.
-        _, start_weights = maximum.exact_maximums_and_weights(initial_node)
-        final_node = history[0][-1]
-        final_maxima, final_weights = maximum.exact_maximums_and_weights(final_node)
-        print(f"{name:>14} {str(min(start_weights) > 0):>8} {len(history[0]) - 1:>6} "
-              f"{final_node[-4]:>12.8f} {final_node[-3]:>12.8f} {final_node[-2]:>12.8f} "
-              f"{float(maximum.exact_variance(final_maxima[1:-1])):>22.15e} {str(min(final_weights) > 0):>8}")
+    #     # 탐색은 numpy로 하고 시작 노드와 최종 노드만 Fraction으로 다시 확인한다.
+    #     _, start_weights = maximum.exact_maximums_and_weights(initial_node)
+    #     final_node = history[0][-1]
+    #     final_maxima, final_weights = maximum.exact_maximums_and_weights(final_node)
+    #     print(f"{name:>14} {str(min(start_weights) > 0):>8} {len(history[0]) - 1:>6} "
+    #           f"{final_node[-4]:>12.8f} {final_node[-3]:>12.8f} {final_node[-2]:>12.8f} "
+    #           f"{float(maximum.exact_variance(final_maxima[1:-1])):>22.15e} {str(min(final_weights) > 0):>8}")
 
+    # SHOW_HISTORIES로 탐색 경로의 처음 상태를 정하고, 그림 오른쪽의 "history" 체크박스로 켜고 끈다.
+    SHOW_HISTORIES = True
     fig_variance, ax_variance, variance_sliders = variance_plot.draw_variance_volume(
-        GRID_N, n=8, histories=histories
+        GRID_N, n=8, histories=histories, show_histories=SHOW_HISTORIES
     )
 
     plt.show()
