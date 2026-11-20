@@ -554,5 +554,97 @@ GL basis의 상한과 비슷?
    - 일반적인 증명은 안되지만 각 차수에 대해 다변수 newton을 실행하고 해의 존재성을 증명 가능하다.
    - https://en.wikipedia.org/wiki/Kantorovich_theorem
 
+# Gradient 구하기
+
+For $k \neq i$ and $k \neq i+1 \\$ 
+$$ 
+\frac{\partial}{\partial\tau_k}Var(\tau_k) = \frac{\partial}{\partial\tau_k}\frac{1}{n-1}\sum_{i=1}^{n-1}(M_i^n - \bar{M})^2 \\ \qquad = \frac{2}{n-1}\sum_{i=1}^{n-1}(M_i^n - \bar{M}) \cdot \sum_{i=1}^{n-1}( \frac{\partial}{\partial\tau_k}M_i^n - \frac{\partial}{\partial\tau_k}\bar{M}) 
+$$
+
+$$ 
+\frac{\partial}{\partial\tau_k}M_i^n = \frac{\partial}{\partial\tau_k}F_i^n(t_i^*, \tau_k) = 
+$$
+<br><br><br>
+
+
+## $L_i^n(t,\tau_k)$
+다른 노드는 고정하고 $\tau_k$에 대해 편미분한다. $k\ne i$에 대해
+$$
+C_{ik}^n(t)=\prod_{\substack{j=1\\j\ne i,k}}^n\frac{t-\tau_j}{\tau_i-\tau_j}
+$$
+로 정의하면, $C_{ik}^n(t)$는 $\tau_k$에 무관하다. 따라서
+$$
+L_i^n(t,\tau_k)
+=\prod_{\substack{j=1\\j\ne i}}^n\frac{t-\tau_j}{\tau_i-\tau_j}
+=C_{ik}^n(t)\cdot\frac{t-\tau_k}{\tau_i-\tau_k}.
+$$
+<br><br><br>
+
+## $\frac{\partial}{\partial\tau_k}L_i^n(t,\tau_k)$
+$$
+\frac{\partial}{\partial\tau_k}L_i^n(t,\tau_k)
+=C_{ik}^n(t)\frac{t-\tau_i}{(\tau_i-\tau_k)^2}.
+$$
+<br><br><br>
+
+## $\omega_i^n(\tau_k)$
+$$
+\begin{aligned}
+\omega_i^n(\tau_k)
+&=\int_{-1}^1L_i^n(t,\tau_k)\,dt\\
+&=\int_{-1}^1C_{ik}^n(t)\cdot\frac{t-\tau_k}{\tau_i-\tau_k}\,dt\\
+&=\frac{1}{\tau_i-\tau_k}\left(\int_{-1}^1tC_{ik}^n(t)\,dt-\tau_k\int_{-1}^1C_{ik}^n(t)\,dt\right).
+\end{aligned}
+$$
+
+$n$의 짝홀만으로 $C_{ik}^n(t)$가 우함수 또는 기함수라고 할 수 없다. 노드가 원점에 대해 대칭이어도 $i,k$를 제외한 노드들은 일반적으로 대칭이 아니므로, 두 적분을 모두 유지한다.
+
+편의를 위해
+$$
+A_{ik}^n=\int_{-1}^1C_{ik}^n(t)\,dt,\qquad
+B_{ik}^n=\int_{-1}^1tC_{ik}^n(t)\,dt
+$$
+로 놓으면, $A_{ik}^n,B_{ik}^n$는 $\tau_k$에 무관하고
+$$
+\omega_i^n(\tau_k)=\frac{B_{ik}^n-\tau_k A_{ik}^n}{\tau_i-\tau_k}.
+$$
+<br><br><br>
+
+## $\frac{\partial}{\partial\tau_k}\omega_i^n(\tau_k)$
+$$
+\begin{aligned}
+\frac{\partial}{\partial\tau_k}\omega_i^n(\tau_k)
+&=\frac{-A_{ik}^n(\tau_i-\tau_k)+(B_{ik}^n-\tau_k A_{ik}^n)}{(\tau_i-\tau_k)^2}\\
+&=\frac{B_{ik}^n-\tau_i A_{ik}^n}{(\tau_i-\tau_k)^2}\\
+&=\frac{1}{(\tau_i-\tau_k)^2}\left(\int_{-1}^1tC_{ik}^n(t)\,dt-\tau_i\int_{-1}^1C_{ik}^n(t)\,dt\right).
+\end{aligned}
+$$
+<br><br><br>
+
+## $\tilde L_i^n(t,\tau_k)$
+$$
+\begin{aligned}
+\tilde L_i^n(t,\tau_k)
+&=\frac{L_i^n(t,\tau_k)}{\omega_i^n(\tau_k)}\\
+&=\frac{C_{ik}^n(t)\cdot\frac{t-\tau_k}{\tau_i-\tau_k}}
+{\frac{B_{ik}^n-\tau_k A_{ik}^n}{\tau_i-\tau_k}}\\
+&=\frac{C_{ik}^n(t)(t-\tau_k)}{B_{ik}^n-\tau_k A_{ik}^n}.
+\end{aligned}
+$$
+서로 다른 노드와 $\omega_i^n\ne0$ 가정에 의해 $B_{ik}^n-\tau_k A_{ik}^n\ne0$이다.
+<br><br><br>
+
+## $\frac{\partial}{\partial\tau_k}\tilde L_i^n(t,\tau_k)$
+$$
+\begin{aligned}
+\frac{\partial}{\partial\tau_k}\tilde L_i^n(t,\tau_k)
+&=C_{ik}^n(t)\frac{-(B_{ik}^n-\tau_k A_{ik}^n)+(t-\tau_k)A_{ik}^n}
+{(B_{ik}^n-\tau_k A_{ik}^n)^2}\\
+&=\frac{C_{ik}^n(t)(tA_{ik}^n-B_{ik}^n)}{(B_{ik}^n-\tau_k A_{ik}^n)^2}.
+\end{aligned}
+$$
+위 식들은 $n$의 짝홀 구분 없이 성립하며, $k\ne i$를 전제로 한다. $F_i^n$의 두 항에 모두 적용할 때는 $k\ne i,i+1$이어야 한다.
+<br><br><br>
+
 # +a
 1. 가중치가 양수임을 가정하면 내분점임을 보장할 수 있지만, 내분점과 외분점으로는 가중치를 보장할 수 없음. -> 이걸 잘 알아보면 양수 가중치 조건을 찾는데 도움이 될지도
