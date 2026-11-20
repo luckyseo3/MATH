@@ -6,7 +6,6 @@
 """
 from fractions import Fraction
 
-
 def exact_maximums_and_weights(node, active=False):
     """유리수 노드에서 F_i의 최댓값과 가중치를 Fraction으로 오차 없이 구한다.
 
@@ -17,52 +16,28 @@ def exact_maximums_and_weights(node, active=False):
     같은 위치의 후보는 하나로 세며, 좌우 대칭인 가운데 F(n이 짝수일 때
     F_{n/2})는 t와 -t의 값이 항상 같으므로 양수 쪽 이름으로 합친다.
     """
+    import fraction_basis as basis
+    value_at = basis.value_at
+
     node = [Fraction(value) for value in node]  # float 입력은 원래 의도한 십진수가 아닌 이미 반올림된 값을 정확히 변환한다.
     n = len(node)
 
-    def value_at(polynomial, point):
-        result = Fraction(0)
-        for coefficient in reversed(polynomial):
-            result = result * point + coefficient
-        return result
+    L = basis.lagrange_basis(node)
+    w = basis.weights(L)
+    N = basis.normalized_lagrange_basis(L, w)
+    G = basis.cumulative_lagrange_basis(N)
+    F = basis.new_basis(G)
 
-    weights = []
-    D = []
-    G = []
-    for i in range(n):
-        polynomial = [Fraction(1)]
-        D_i = Fraction(1)
-        for j in range(n):
-            if j == i:
-                continue
-            shifted = [Fraction(0), *polynomial]  # polynomial * t
-            for k, coefficient in enumerate(polynomial):
-                shifted[k] -= coefficient * node[j]
-            polynomial = shifted
-            D_i *= node[i] - node[j]
-
-        integral = [Fraction(0)] + [c / (D_i * (k + 1)) for k, c in enumerate(polynomial)]
-        weight = value_at(integral, Fraction(1)) - value_at(integral, Fraction(-1))
-        if weight == 0:
-            raise ValueError("Quadrature weights must be nonzero")
-
-        G_i = [c / weight for c in integral]
-        G_i[0] -= value_at(G_i, Fraction(-1)) + Fraction(1, 2)
-        weights.append(weight)
-        D.append(D_i)
-        G.append(G_i)
-
-    G_extended = [[Fraction(1, 2)], *G, [Fraction(-1, 2)]]
+    # L_i의 최고차항 계수는 1 / D_i (D_i = prod_{j != i} (tau_i - tau_j))이다.
+    D = [Fraction(1) / L_i[-1] for L_i in L]
 
     # 내부 F_i는 양 끝점에서 항상 0이므로 -1과 1은 같은 후보 "±1"로 본다.
     names = {value: f"tau{j + 1}" for j, value in enumerate(node)}
     names[node[0]] = names[node[-1]] = "±1"
     M = []
     labels = []
-    for i in range(n + 1):
-        left, right = G_extended[i], G_extended[i + 1]
-        F_i = [(left[k] if k < len(left) else 0) - (right[k] if k < len(right) else 0)
-               for k in range(max(len(left), len(right)))]
+
+    for i, F_i in enumerate(F):
         # 구간의 양 끝점도 전역 최댓값의 후보이다.
         candidates = [Fraction(-1), Fraction(1)]
 
@@ -74,8 +49,8 @@ def exact_maximums_and_weights(node, active=False):
 
         else:
             # 문서의 i, i+1은 Python의 i-1, i에 대응한다.
-            alpha = weights[i] / D[i-1]
-            beta = weights[i-1] / D[i]
+            alpha = w[i] / D[i-1]
+            beta = w[i-1] / D[i]
             candidates.extend(node[j] for j in range(n) if j not in (i-1, i))
 
             difference = alpha - beta
@@ -85,13 +60,13 @@ def exact_maximums_and_weights(node, active=False):
                     candidates.append(star)
 
         values = {point: value_at(F_i, point) for point in candidates}
-        M.append(max(values.values()))
+        M.append(max(values.values())) # 이 부분을 min으로 바꾸면 최솟값으로 볼 수 있음
         if active:
             mirror = 2 * i == n
             best = {abs(point) if mirror else point for point, value in values.items() if value == M[-1]}
             labels.append("/".join(sorted({names.get(point, "t*") for point in best})))
 
-    return (M, weights, labels) if active else (M, weights)
+    return (M, w, labels) if active else (M, w)
 
 def exact_variance(values):
     """Return the population variance of Fractions without rounding."""
@@ -104,62 +79,50 @@ def precise_maximums_and_weights(node, dps=40):
     dps=40이면 n=20에서도 Fraction 정확값과 15자리 이상 일치하고, Fraction보다 약 4 ~ 7배 빠르다 (n = 10 ~ 20).
     float 노드는 그 float 값 그대로(반올림 없이) mpf로 바꾼다.
     """
-    import mpmath as mp
+    import mpmath_basis as basis
+    mp = basis.mp
+    value_at = basis.value_at
 
     with mp.workdps(dps):
         node = [mp.mpf(value) for value in node]
         n = len(node)
 
-        def value_at(polynomial, point):
-            result = mp.mpf(0)
-            for coefficient in reversed(polynomial):
-                result = result * point + coefficient
-            return result
+        L = basis.lagrange_basis(node)
+        w = basis.weights(L)
+        N = basis.normalized_lagrange_basis(L, w)
+        G = basis.cumulative_lagrange_basis(N)
+        F = basis.new_basis(G)
 
-        weights, D, G = [], [], []
-        for i in range(n):
-            polynomial = [mp.mpf(1)]
-            D_i = mp.mpf(1)
-            for j in range(n):
-                if j == i:
-                    continue
-                shifted = [mp.mpf(0), *polynomial]  # polynomial * t
-                for k, coefficient in enumerate(polynomial):
-                    shifted[k] -= coefficient * node[j]
-                polynomial = shifted
-                D_i *= node[i] - node[j]
-            integral = [mp.mpf(0)] + [c / (D_i * (k + 1)) for k, c in enumerate(polynomial)]
-            weight = value_at(integral, 1) - value_at(integral, -1)
-            if weight == 0:
-                raise ValueError("Quadrature weights must be nonzero")
-            G_i = [c / weight for c in integral]
-            G_i[0] -= value_at(G_i, -1) + mp.mpf(1) / 2
-            weights.append(weight)
-            D.append(D_i)
-            G.append(G_i)
+        # L_i의 최고차항 계수는 1 / D_i (D_i = prod_{j != i} (tau_i - tau_j))이다.
+        D = [1 / L_i[-1] for L_i in L]
 
-        G_extended = [[mp.mpf(1) / 2], *G, [-mp.mpf(1) / 2]]
         M = []
-        for i in range(n + 1):
-            left, right = G_extended[i], G_extended[i + 1]
-            F_i = [(left[k] if k < len(left) else 0) - (right[k] if k < len(right) else 0)
-                   for k in range(max(len(left), len(right)))]
+
+        for i, F_i in enumerate(F):
+            # 구간의 양 끝점도 전역 최댓값의 후보이다.
             candidates = [mp.mpf(-1), mp.mpf(1)]
-            if i == 0:
+
+            if i == 0:  # F_0의 임계점: node[1], ..., node[n-1]
                 candidates.extend(node[1:])
-            elif i == n:
+
+            elif i == n:  # F_n의 임계점: node[0], ..., node[n-2]
                 candidates.extend(node[:-1])
+
             else:
-                alpha = weights[i] / D[i-1]
-                beta = weights[i-1] / D[i]
+                # 문서의 i, i+1은 Python의 i-1, i에 대응한다.
+                alpha = w[i] / D[i-1]
+                beta = w[i-1] / D[i]
                 candidates.extend(node[j] for j in range(n) if j not in (i-1, i))
+
                 difference = alpha - beta
                 if difference != 0:
                     star = (alpha * node[i] - beta * node[i-1]) / difference
                     if -1 <= star <= 1:
                         candidates.append(star)
+
             M.append(max(value_at(F_i, point) for point in candidates))
-        return M, weights
+
+        return M, w
 
 def precise_variance_of_maximums_of_F(node, dps=40):
     """precise_maximums_and_weights로 구한 분산 (내부, 끝점 포함)을 float로 반환한다.
