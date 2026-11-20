@@ -412,6 +412,33 @@ def cached_compass_search(n, h, h_limit, initial_node):
     return runs[key]
 
 
+def add_toggles(fig, rect, toggles):
+    """toggles = {이름: (처음 상태, 상태를 받는 함수)}로 체크박스를 만든다. 비어 있으면 None.
+
+    체크박스가 가비지 컬렉션되면 동작하지 않으므로 호출자가 반환값을 보관해야 한다.
+    """
+    from matplotlib.widgets import CheckButtons
+
+    if not toggles:
+        return None
+    names = list(toggles)
+    check = CheckButtons(fig.add_axes(rect), names, [toggles[name][0] for name in names])
+    state = {name: toggles[name][0] for name in names}
+
+    def on_clicked(name):
+        state[name] = not state[name]
+        toggles[name][1](state[name])
+        fig.canvas.draw_idle()
+
+    check.on_clicked(on_clicked)
+    return check
+
+
+def set_visible(artists, visible):
+    for artist in artists:
+        artist.set_visible(visible)
+
+
 def add_view_sliders(fig, ax, elev, azim):
     from matplotlib.widgets import Slider
 
@@ -537,14 +564,15 @@ def draw_variance_surface(a_values, b_values, Z, *, n=6, histories=None, elev=25
 
 def draw_variance_volume(N, *, n=8, max_points=3000, points_limit=30000, max_size=10,
                          color_max=0.0, red_at=4.0, zoom_limit=50, elev=25, azim=-130,
-                         histories=None):
+                         histories=None, show_histories=True):
     """(a, b, c) 위치에 양수 가중치 격자점을 찍고, 분산은 점의 크기와 색으로 나타낸다.
 
     log10(분산)이 작을수록 점이 크다. 슬라이더 값 이하인 점만 표시하며,
     회전이 느려지지 않도록 표시할 점은 max_points개 이내로 고르게 솎는다.
     histories는 {이름: compass_search의 반환값}이며, 경로마다 다른 색의 가는 선으로 표시한다.
-    반환값은 (figure, axes, sliders)이다. 슬라이더가 가비지 컬렉션되면
-    동작하지 않으므로 호출한 쪽에서 sliders를 변수로 들고 있어야 한다.
+    show_histories는 처음 상태이고, histories가 있으면 "history" 체크박스로 켜고 끌 수 있다.
+    반환값은 (figure, axes, widgets)이다. widgets(슬라이더, 체크박스)가 가비지 컬렉션되면
+    동작하지 않으므로 호출한 쪽에서 변수로 들고 있어야 한다.
     """
     import matplotlib.pyplot as plt
     from matplotlib.cm import ScalarMappable
@@ -580,12 +608,14 @@ def draw_variance_volume(N, *, n=8, max_points=3000, points_limit=30000, max_siz
             ax.scatter(minima['a'][chosen] / N, minima['b'][chosen] / N, minima['c'][chosen] / N,
                        marker=marker, color=color, s=size, depthshade=False, zorder=3, axlim_clip=True,
                        label=f"{label} ({int(chosen.sum())})")
+    history_lines = []
     for index, (name, history) in enumerate((histories or {}).items()):
         path = np.array(history[0], dtype=float)
-        ax.plot(path[:, -4], path[:, -3], path[:, -2], color=plt.get_cmap("tab20")(index % 20), linewidth=0.7,
-                marker="o", markersize=1, zorder=4, axlim_clip=True, label=name)
+        history_lines += ax.plot(path[:, -4], path[:, -3], path[:, -2], color=plt.get_cmap("tab20")(index % 20),
+                                 linewidth=0.7, marker="o", markersize=1, zorder=4, axlim_clip=True, label=name)
     if ax.get_legend_handles_labels()[0]:
         ax.legend(loc="upper left", fontsize=7, ncols=2)
+    set_visible(history_lines, show_histories)
 
     A, B, C = points['a'] / N, points['b'] / N, points['c'] / N
     # 줌 중심은 처음에 분산이 가장 작은 격자점이며, 슬라이더로 옮길 수 있다.
@@ -638,20 +668,27 @@ def draw_variance_volume(N, *, n=8, max_points=3000, points_limit=30000, max_siz
     fig.canvas.mpl_connect("scroll_event", on_scroll)
     update()
 
+    # 탐색 경로 켜고 끄기 (histories가 있을 때만)
+    check = add_toggles(fig, [0.88, 0.385, 0.11, 0.045],
+                        {"history": (show_histories, lambda on: set_visible(history_lines, on))}
+                        if history_lines else {})
+
     return fig, ax, (*center_sliders, zoom_slider, points_slider, threshold_slider,
-                     *add_view_sliders(fig, ax, elev, azim))
+                     *add_view_sliders(fig, ax, elev, azim), *([check] if check else []))
 
 
 def label_text(label):
     return "(" + ", ".join(part.replace("tau", "τ") for part in label.split(",")) + ")"
 
 
-def draw_active_regions(N, *, n=6, histories=None):
+def draw_active_regions(N, *, n=6, histories=None, show_histories=True):
     """(a, b) 평면을 내부 F_1~F_{n-1}의 최댓값 후보 조합별로 색칠한 지도.
 
     색이 바뀌는 곳이 분산이 미분 불가능할 수 있는 경계이다. 검은 실선/점선/일점쇄선은
     가중치 ω_1, ω_2, ω_3 = 0인 곡선(분산이 발산하는 곳)이고, 음수 가중치 영역은 흐리게 칠한다.
     후보가 정확히 같은 값으로 겹친 점(라벨에 "/")은 빨간 원, 분산 최소 격자점은 자홍색 별이다.
+    histories(탐색 경로)는 검은 선이며, show_histories는 처음 상태이고 "history" 체크박스로 켜고 끈다.
+    반환값은 (figure, axes)이고, 체크박스는 가비지 컬렉션되지 않도록 figure에 붙여 둔다.
     """
     import matplotlib.pyplot as plt
     from matplotlib.colors import ListedColormap
@@ -697,9 +734,14 @@ def draw_active_regions(N, *, n=6, histories=None):
     best = np.unravel_index(np.argmin(P), P.shape)
     ax.scatter([best[0] / N], [best[1] / N], marker="*", s=120, color="magenta", edgecolors="black",
                linewidths=0.5, zorder=6)
+    history_lines = []
     for index, (name, history) in enumerate((histories or {}).items()):
         path = np.array(history[0], dtype=float)
-        ax.plot(path[:, -3], path[:, -2], color="black", linewidth=0.8, zorder=4)
+        history_lines += ax.plot(path[:, -3], path[:, -2], color="black", linewidth=0.8, zorder=4)
+    set_visible(history_lines, show_histories)
+    fig.history_toggle = add_toggles(fig, [0.64, 0.02, 0.14, 0.05],
+                                     {"history": (show_histories, lambda on: set_visible(history_lines, on))}
+                                     if history_lines else {})
 
     handles = [Patch(color=base[r], label=f"{label_text(names[k])}  {int((ids == k).sum()):,}")
                for r, k in enumerate(order)]
@@ -719,15 +761,20 @@ def draw_active_regions(N, *, n=6, histories=None):
 
 
 def draw_variance_plane(N, *, n=6, histories=None, max_mesh=100, zoom_limit=50,
-                        color_max=0.0, red_at=4.0, elev=25, azim=-130):
+                        color_max=0.0, red_at=4.0, elev=25, azim=-130, show_boundaries=True,
+                        show_histories=True):
     """간격 1/N 격자의 log10(분산) 곡면을 그리고, zoom 슬라이더로 최솟값 근처를 확대한다.
 
     회전이 느려지지 않도록 화면 안의 격자를 최대 max_mesh x max_mesh로 솎아 그리며,
     확대할수록 솎는 간격이 줄어 원래 1/N 격자가 그대로 보인다.
     색은 log10(분산) 값으로만 정해진다. 음수 가중치 점은 작은 검은 점,
     양수 가중치 점들 사이의 격자 국소 최솟값은 자홍색 별로 표시한다.
+    active_plane 결과가 있으면, 최댓값 후보가 바뀌는 경계(분산이 미분 불가능할 수 있는 곳)를 흰 선으로 그린다.
+    show_boundaries는 처음 상태이고, 그림 오른쪽 위의 "boundaries" 체크박스로 실행 중에 켜고 끌 수 있다.
     histories는 {이름: compass_search의 반환값}이며, 경로마다 다른 색의 가는 선으로 표시한다.
-    반환값은 (figure, axes, sliders)이다.
+    show_histories는 처음 상태이고, histories가 있으면 "history" 체크박스로 켜고 끌 수 있다.
+    반환값은 (figure, axes, widgets)이다. widgets(슬라이더, 체크박스)가 가비지 컬렉션되면
+    동작하지 않으므로 호출자가 보관해야 한다.
     """
     import matplotlib.pyplot as plt
     from matplotlib.cm import ScalarMappable
@@ -771,14 +818,17 @@ def draw_variance_plane(N, *, n=6, histories=None, max_mesh=100, zoom_limit=50,
     i, j = np.nonzero(is_minimum)
     ax.scatter(i / N, j / N, L[i, j], marker="*", color="magenta", s=40, depthshade=False,
                zorder=5, axlim_clip=True, label=f"grid local min ({len(i)})")
+    history_lines = []
     for index, (name, history) in enumerate((histories or {}).items()):
         path = np.array(history[0], dtype=float)
-        ax.plot(path[:, -3], path[:, -2], np.log10(np.array(history[1], dtype=float)),
-                color=plt.get_cmap("tab10")(index % 10), linewidth=0.8, marker="o", markersize=1,
-                zorder=4, axlim_clip=True, label=name)
+        history_lines += ax.plot(path[:, -3], path[:, -2], np.log10(np.array(history[1], dtype=float)),
+                                 color=plt.get_cmap("tab10")(index % 10), linewidth=0.8, marker="o",
+                                 markersize=1, zorder=4, axlim_clip=True, label=name)
     ax.legend(loc="upper left", fontsize=7)
+    set_visible(history_lines, show_histories)
 
     drawn = []
+    boundaries = {'on': show_boundaries and ids is not None}
 
     def update(_=None):
         while drawn:
@@ -804,7 +854,7 @@ def draw_variance_plane(N, *, n=6, histories=None, max_mesh=100, zoom_limit=50,
         if negative.any():
             drawn.append(ax.scatter(A[negative], B[negative], window[negative], color="black", s=1,
                                     linewidths=0, depthshade=False, zorder=2, axlim_clip=True))
-        if ids is not None:
+        if boundaries['on']:
             # 이웃한 두 격자점의 최댓값 후보가 다르면 그 사이에 짧은 선분을 곡면 높이로 그린다.
             label = ids[np.ix_(rows, cols)]
             half = stride / (2 * N)
@@ -848,9 +898,22 @@ def draw_variance_plane(N, *, n=6, histories=None, max_mesh=100, zoom_limit=50,
             zoom_slider.set_val(float(np.clip(zoom_slider.val * 1.25 ** event.step, 1, zoom_limit)))
 
     fig.canvas.mpl_connect("scroll_event", on_scroll)
+
+    # 후보 경계(흰 선)와 탐색 경로 켜고 끄기. 그릴 것이 없는 항목은 체크박스에 넣지 않는다.
+    def set_boundaries(on):
+        boundaries['on'] = on
+        update()
+
+    toggles = {}
+    if ids is not None:
+        toggles["boundaries"] = (boundaries['on'], set_boundaries)
+    if history_lines:
+        toggles["history"] = (show_histories, lambda on: set_visible(history_lines, on))
+    check = add_toggles(fig, [0.84, 0.95 - 0.045 * len(toggles), 0.14, 0.045 * len(toggles)], toggles)
     update()
 
-    return fig, ax, (*center_sliders, zoom_slider, *add_view_sliders(fig, ax, elev, azim))
+    return fig, ax, (*center_sliders, zoom_slider, *add_view_sliders(fig, ax, elev, azim),
+                     *([check] if check else []))
 
 
 if __name__ == "__main__":
