@@ -92,10 +92,15 @@ if __name__ == "__main__":
     #     exact_maxima, _ = maximum.exact_maximums_and_weights(node_history[-1])
     #     exact_variance = maximum.exact_variance(exact_maxima[1:-1])
     #     print(f"exact check: {float(exact_variance):.15e}")
-    # (탐색 경로를 그리려면 아래 두 함수에 histories=histories를 넘긴다.)
+    # (탐색 경로를 그리려면 아래 두 함수에 histories=histories를 넘긴다.
+    #  그러면 "history" 체크박스가 생기고, show_histories=False로 처음에 숨길 수 있다.)
 
     # 분산 곡면 위에 최댓값 후보가 바뀌는 경계를 흰 선으로 표시한다. zoom 슬라이더나 마우스 휠로 확대한다.
-    fig_variance, ax_variance, variance_sliders = variance_plot.draw_variance_plane(GRID_N, n=7)
+    # SHOW_BOUNDARIES로 처음 상태를 정하고, 그림 오른쪽 위 "boundaries" 체크박스로 켜고 끈다.
+    SHOW_BOUNDARIES = True
+    fig_variance, ax_variance, variance_sliders = variance_plot.draw_variance_plane(
+        GRID_N, n=7, show_boundaries=SHOW_BOUNDARIES
+    )
     # (a, b) 평면을 최댓값 후보 조합별로 색칠한 지도
     fig_regions, ax_regions = variance_plot.draw_active_regions(GRID_N, n=7)
 
