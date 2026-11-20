@@ -90,10 +90,16 @@ if __name__ == "__main__":
         print(f"exact check: {float(exact_variance):.15e}")
 
     # 분산 곡면 위에 탐색 경로들을 색깔별로 표시한다. zoom 슬라이더나 마우스 휠로 최솟값 근처를 확대한다.
+    # 최댓값 후보가 바뀌는 경계(미분 불가능할 수 있는 곳)는 흰 선이다.
+    # SHOW_BOUNDARIES, SHOW_HISTORIES로 처음 상태를 정하고, 그림의 "boundaries" / "history" 체크박스로 켜고 끈다.
+    SHOW_BOUNDARIES = True
+    SHOW_HISTORIES = True
     fig_variance, ax_variance, variance_sliders = variance_plot.draw_variance_plane(
-        GRID_N, n=6, histories=histories
+        GRID_N, n=6, histories=histories, show_boundaries=SHOW_BOUNDARIES, show_histories=SHOW_HISTORIES
     )
-    # (a, b) 평면을 최댓값 후보 조합별로 색칠한 지도
-    fig_regions, ax_regions = variance_plot.draw_active_regions(GRID_N, n=6, histories=histories)
+    # (a, b) 평면을 최댓값 후보 조합별로 색칠한 지도 (오른쪽 아래 "history" 체크박스)
+    fig_regions, ax_regions = variance_plot.draw_active_regions(
+        GRID_N, n=6, histories=histories, show_histories=SHOW_HISTORIES
+    )
 
     plt.show()
