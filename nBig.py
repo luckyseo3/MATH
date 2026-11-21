@@ -1,4 +1,4 @@
-"""n = 10 ~ 15에서 ESC 노드로 시작하는 compass search(maximum.compass_search_ver3)를 수행하고 결과를 분석한다.
+"""n = 10 ~ 15에서 ESC 노드로 시작하는 compass search(compass_search.compass_search_ver3)를 수행하고 결과를 분석한다.
 
 - 초깃값: ESC 노드를 정확히 대칭으로 맞춘 것 (끝점 ±1, 홀수 n이면 가운데 0)
 - 분산 계산: maximum.precise_variance_of_maximums_of_F (mpmath DPS자리)
@@ -16,15 +16,16 @@ import time
 import numpy as np
 import matplotlib.pyplot as plt
 
-import generate_nodes as nodes
+import nodes
 import draw_basis as draw
 import maximum
+import s_compass_search as compass_search
 
 N_VALUES = range(10, 16)
 H_INITIAL = 0.001   # ESC와 최적 노드의 거리는 0.01 정도이다.
 H_LIMIT = 1e-8      # 위치를 1e-8까지 다듬는다. 분산은 DPS자리로 계산하므로 비교가 오차에 묻히지 않는다.
 DPS = 40            # n=20에서 Fraction 정확값과 15자리 이상 일치한다.
-SEARCH = 'compass_search_ver3'  # maximum의 탐색 함수 이름. 설정에 들어가므로 다른 탐색의 결과와 섞이지 않는다.
+SEARCH = 'compass_search_ver3'  # compass_search의 탐색 함수 이름. 설정에 들어가므로 다른 탐색의 결과와 섞이지 않는다.
 SAVE_INTERVAL = 60  # 탐색 상태를 저장하는 간격 (초)
 
 CACHE_DIR = Path(__file__).resolve().parent / 'variance_cache' / 'nBig'
@@ -84,7 +85,7 @@ def run(n):
         print(f"n={n}: {len(current['node_history']) - 1} steps, h={current['h']:.1e}, "
               f"var={current['min_history'][-1]:.3e}, {elapsed / 60:.1f} min", flush=True)
 
-    node_history, min_history, h_history = getattr(maximum, SEARCH)(
+    node_history, min_history, h_history = getattr(compass_search, SEARCH)(
         n, H_INITIAL, H_LIMIT, esc_initial_node(n), variance_function=variance, state=state, on_step=on_step)
     elapsed = elapsed_before + time.perf_counter() - start
 
