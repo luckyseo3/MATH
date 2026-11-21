@@ -1,11 +1,13 @@
 import numpy as np
+from fractions import Fraction
 import matplotlib.pyplot as plt
 import sympy as sp
 
-import generate_nodes as nodes
-import generate_basis as basis
+import nodes
+import basis_sympy as basis
 import draw_basis as draw
 import maximum
+import s_compass_search as compass_search
 import draw_variance as variance_plot
 
 
@@ -14,18 +16,18 @@ if __name__ == "__main__":
     # 생성 함수를 전달하면 선택한 방식과 n에 맞춰 기저를 새로 계산한다.
     # n개 노드로 최대 n차인 n+1개의 기저함수를 생성한다.
     basis_sources = {
-        "GL":nodes.GL_nodes,
-        "ESC": nodes.ESC_nodes(5),
-        "case1": np.array([-1, -0.1, 0, 0.1, 1]),
-        "case2": np.array([-1, -0.3, 0, 0.3, 1]),
-        "case3": np.array([-1, -0.5, 0, 0.5, 1]),
-        "case4": np.array([-1, -0.7, 0, 0.7, 1]),
-        "case5": np.array([-1, -0.9, 0, 0.9, 1]),
-        "case1 optimize": np.array([-1.00000000000000000000, -0.36343097600000007219, 0.00000000000000000000, 0.36343097600000007219, 1.00000000000000000000]),
-        "case2 optimize": np.array([-1.00000000000000000000, -0.36343097599999990566, 0.00000000000000000000, 0.36343097599999990566, 1.00000000000000000000]),
-        "case3 optimize": np.array([-1.00000000000000000000, -0.61525633500000032061, 0.00000000000000000000, 0.61525633500000032061, 1.00000000000000000000]),
-        "case4 optimize": np.array([-1.00000000000000000000, -0.61525633500000009857, 0.00000000000000000000, 0.61525633500000009857, 1.00000000000000000000]),
-        "case5 optimize": np.array([-1.00000000000000000000, -0.82468554100000035501, 0.00000000000000000000, 0.82468554100000035501, 1.00000000000000000000]),
+        "GL":nodes.precise_GL_nodes,
+        "ESC": nodes.ESC_nodes(5, dps=40),
+        "case1": np.array([Fraction("-1"), Fraction("-0.1"), Fraction("0"), Fraction("0.1"), Fraction("1")], dtype=object),
+        "case2": np.array([Fraction("-1"), Fraction("-0.3"), Fraction("0"), Fraction("0.3"), Fraction("1")], dtype=object),
+        "case3": np.array([Fraction("-1"), Fraction("-0.5"), Fraction("0"), Fraction("0.5"), Fraction("1")], dtype=object),
+        "case4": np.array([Fraction("-1"), Fraction("-0.7"), Fraction("0"), Fraction("0.7"), Fraction("1")], dtype=object),
+        "case5": np.array([Fraction("-1"), Fraction("-0.9"), Fraction("0"), Fraction("0.9"), Fraction("1")], dtype=object),
+        "case1 optimize": np.array([Fraction("-1.00000000000000000000"), Fraction("-0.36343097600000007219"), Fraction("0.00000000000000000000"), Fraction("0.36343097600000007219"), Fraction("1.00000000000000000000")], dtype=object),
+        "case2 optimize": np.array([Fraction("-1.00000000000000000000"), Fraction("-0.36343097599999990566"), Fraction("0.00000000000000000000"), Fraction("0.36343097599999990566"), Fraction("1.00000000000000000000")], dtype=object),
+        "case3 optimize": np.array([Fraction("-1.00000000000000000000"), Fraction("-0.61525633500000032061"), Fraction("0.00000000000000000000"), Fraction("0.61525633500000032061"), Fraction("1.00000000000000000000")], dtype=object),
+        "case4 optimize": np.array([Fraction("-1.00000000000000000000"), Fraction("-0.61525633500000009857"), Fraction("0.00000000000000000000"), Fraction("0.61525633500000009857"), Fraction("1.00000000000000000000")], dtype=object),
+        "case5 optimize": np.array([Fraction("-1.00000000000000000000"), Fraction("-0.82468554100000035501"), Fraction("0.00000000000000000000"), Fraction("0.82468554100000035501"), Fraction("1.00000000000000000000")], dtype=object),
 
     }
 
@@ -69,8 +71,8 @@ if __name__ == "__main__":
     for name in ("ESC","case1","case2","case3","case4","case5"):
         initial_node = basis_sources[name]
         initial_node[0], initial_node[2], initial_node[-1] = -1, 0, 1
-        history = maximum.compass_search_ver3(
-            5, 0.001, 0.000000001, initial_node.tolist()
+        history = compass_search.compass_search_ver3(
+            5, Fraction("0.001"), Fraction("0.000000001"), initial_node.tolist()
         )
         histories[name] = history
         node_history, min_history, h_history = history
@@ -78,12 +80,12 @@ if __name__ == "__main__":
         # print(f"{'step':>4} {'next h':>20} {'variance':>20}  nodes")
         # for step, (node, value, step_h) in enumerate(zip(node_history, min_history, h_history)):
         #     node_text = ", ".join(f"{float(v):.20f}" for v in node)
-        #     print(f"{step:>4} {step_h:>20.15f} {float(value):>20.15e}  [{node_text}]")
+        #     print(f"{step:>4} {float(step_h):>20.15f} {float(value):>20.15e}  [{node_text}]")
 
         # 탐색은 mpmath로 하고 최종 노드만 Fraction 정확값으로 다시 확인한다.
         exact_maxima, _ = maximum.exact_maximums_and_weights(node_history[-1])
         exact_variance = maximum.exact_variance(exact_maxima[1:-1])
-        print(f"[{name}] a={node_history[-1][-2]:.8f}, exact check: {float(exact_variance):.15e}")
+        print(f"[{name}] a={float(node_history[-1][-2]):.8f}, exact check: {float(exact_variance):.15e}")
 
     # 분산 곡선 위에 탐색 경로들을 색깔별로 표시한다.
     fig_variance, ax_variance = variance_plot.draw_variance_curve(
