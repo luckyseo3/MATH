@@ -1,9 +1,10 @@
 import numpy as np
+from fractions import Fraction
 import matplotlib.pyplot as plt
 import sympy as sp
 
-import generate_nodes as nodes
-import generate_basis as basis
+import nodes
+import basis_sympy as basis
 import draw_basis as draw
 import maximum
 import draw_variance as variance_plot
@@ -16,14 +17,14 @@ if __name__ == "__main__":
     # 생성 함수를 전달하면 선택한 방식과 n에 맞춰 기저를 새로 계산한다.
     # n개 노드로 최대 n차인 n+1개의 기저함수를 생성한다.
     basis_sources = {
-        "GL":nodes.GL_nodes,
-        "ESC": nodes.ESC_nodes(8),
-        "case1": np.array([-1.00000000000000000000, -0.84645906502257362014, -0.56485449735052128961, -0.20261236737965795940, 0.20261236737965809818, 0.56485449735052162268, 0.84645906502257350912, 1.00000000000000000000]),
-        "case2": np.array([-1.00000000000000000000, -0.83869806502259058867, -0.54418149735056398075, -0.19062836737964597433, 0.19062836737964611311, 0.54418149735056431382, 0.83869806502259047765, 1.00000000000000000000]),
-        "case3": np.array([-1, -0.80, -0.1, 0, 0.1, 0.80, 1]),
-        "case4": np.array([-1, -0.80, -0.1, 0, 0.1, 0.80, 1]),
-        "case5": np.array([-1, -0.90, -0.8, 0, 0.8, 0.90, 1]),
-        "case6": np.array([-1, -0.50, -0.1, 0, 0.1, 0.50, 1]),
+        "GL":nodes.precise_GL_nodes,
+        "ESC": nodes.ESC_nodes(8, dps=40),
+        "case1": np.array([Fraction("-1.00000000000000000000"), Fraction("-0.84645906502257362014"), Fraction("-0.56485449735052128961"), Fraction("-0.20261236737965795940"), Fraction("0.20261236737965809818"), Fraction("0.56485449735052162268"), Fraction("0.84645906502257350912"), Fraction("1.00000000000000000000")], dtype=object),
+        "case2": np.array([Fraction("-1.00000000000000000000"), Fraction("-0.83869806502259058867"), Fraction("-0.54418149735056398075"), Fraction("-0.19062836737964597433"), Fraction("0.19062836737964611311"), Fraction("0.54418149735056431382"), Fraction("0.83869806502259047765"), Fraction("1.00000000000000000000")], dtype=object),
+        "case3": np.array([Fraction("-1"), Fraction("-0.80"), Fraction("-0.1"), Fraction("0"), Fraction("0.1"), Fraction("0.80"), Fraction("1")], dtype=object),
+        "case4": np.array([Fraction("-1"), Fraction("-0.80"), Fraction("-0.1"), Fraction("0"), Fraction("0.1"), Fraction("0.80"), Fraction("1")], dtype=object),
+        "case5": np.array([Fraction("-1"), Fraction("-0.90"), Fraction("-0.8"), Fraction("0"), Fraction("0.8"), Fraction("0.90"), Fraction("1")], dtype=object),
+        "case6": np.array([Fraction("-1"), Fraction("-0.50"), Fraction("-0.1"), Fraction("0"), Fraction("0.1"), Fraction("0.50"), Fraction("1")], dtype=object),
     }
 
     ##################################################################################################################
@@ -66,13 +67,13 @@ if __name__ == "__main__":
     # 그러면 "history" 체크박스가 생기고, show_histories=False로 처음에 숨길 수 있다.
     fig_variance, ax_variance, variance_sliders = variance_plot.draw_variance_volume(GRID_N, n=9)
 
-    # initial_node = nodes.ESC_nodes(8)
-    # history = maximum.compass_search_ver3(8, 0.01, 1e-6, initial_node.tolist())
+    # initial_node = nodes.ESC_nodes(8, dps=40)
+    # history = compass_search.compass_search_ver3(8, 0.01, 1e-6, initial_node.tolist())
 
     # node_history, min_history, h_history = history
     # print(f"{'step':>4} {'next h':>20} {'variance':>20}  nodes")
     # for step, (node, value, step_h) in enumerate(zip(node_history, min_history, h_history)):
     #     node_text = ", ".join(f"{float(v):.20f}" for v in node)
-    #     print(f"{step:>4} {step_h:>20.15f} {float(value):>20.15e}  [{node_text}]")
+    #     print(f"{step:>4} {float(step_h):>20.15f} {float(value):>20.15e}  [{node_text}]")
 
     plt.show()
