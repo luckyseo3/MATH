@@ -1,11 +1,13 @@
 import numpy as np
+from fractions import Fraction
 import matplotlib.pyplot as plt
 import sympy as sp
 
-import generate_nodes as nodes
-import generate_basis as basis
+import nodes
+import basis_sympy as basis
 import draw_basis as draw
 import maximum
+import s_compass_search as compass_search
 import draw_variance as variance_plot
 
 
@@ -14,21 +16,21 @@ if __name__ == "__main__":
     # 생성 함수를 전달하면 선택한 방식과 n에 맞춰 기저를 새로 계산한다.
     # n개 노드로 최대 n차인 n+1개의 기저함수를 생성한다.
     basis_sources = {
-        "GL":nodes.GL_nodes,
-        "ESC": nodes.ESC_nodes(7),
-        "case1": np.array([-1, -0.95, -0.1, 0, 0.1, 0.95, 1]),
-        "case2": np.array([-1, -0.95, -0.5, 0, 0.5, 0.95, 1]),
-        "case3": np.array([-1, -0.80, -0.1, 0, 0.1, 0.80, 1]),
-        "case4": np.array([-1, -0.80, -0.1, 0, 0.1, 0.80, 1]),
-        "case5": np.array([-1, -0.90, -0.8, 0, 0.8, 0.90, 1]),
-        "case6": np.array([-1, -0.50, -0.1, 0, 0.1, 0.50, 1]),
-        "ESC optimal": np.array([-1.00000000000000000000, -0.79278273580483960004, -0.42562886791263354613, 0.00000000000000000000, 0.42562886791263365716, 0.79278273580484004412, 1.00000000000000000000]),
-        "case1 optimal": np.array([-1.00000000000000000000, -0.87551500000000004320, -0.28348400000000023580, 0.00000000000000000000, 0.28348400000000023580, 0.87551500000000004320, 1.00000000000000000000]),
-        "case2 optimal": np.array([-1.00000000000000000000, -0.91087000000000273303, -0.49232000000000986084, 0.00000000000000000000, 0.49232000000000986084, 0.91087000000000273303, 1.00000000000000000000]),
-        "case3 optimal": np.array([-1.00000000000000000000, -0.75110099999999946352, -0.23670000000000004925, 0.00000000000000000000, 0.23670000000000004925, 0.75110099999999946352, 1.00000000000000000000]),
-        "case4 optimal": np.array([-1.00000000000000000000, -0.75110099999999946352, -0.23670000000000004925, 0.00000000000000000000, 0.23670000000000004925, 0.75110099999999946352, 1.00000000000000000000]),
-        # "case5 optimal": np.array([-1.00000000000000000000, -0.75110099999999946352, -0.23670000000000004925, 0.00000000000000000000, 0.23670000000000004925, 0.75110099999999946352, 1.00000000000000000000]),
-        # "case6 optimal": np.array([-1.00000000000000000000, -0.75110099999999946352, -0.23670000000000004925, 0.00000000000000000000, 0.23670000000000004925, 0.75110099999999946352, 1.00000000000000000000]),
+        "GL":nodes.precise_GL_nodes,
+        "ESC": nodes.ESC_nodes(7, dps=40),
+        "case1": np.array([Fraction("-1"), Fraction("-0.95"), Fraction("-0.1"), Fraction("0"), Fraction("0.1"), Fraction("0.95"), Fraction("1")], dtype=object),
+        "case2": np.array([Fraction("-1"), Fraction("-0.95"), Fraction("-0.5"), Fraction("0"), Fraction("0.5"), Fraction("0.95"), Fraction("1")], dtype=object),
+        "case3": np.array([Fraction("-1"), Fraction("-0.80"), Fraction("-0.1"), Fraction("0"), Fraction("0.1"), Fraction("0.80"), Fraction("1")], dtype=object),
+        "case4": np.array([Fraction("-1"), Fraction("-0.80"), Fraction("-0.1"), Fraction("0"), Fraction("0.1"), Fraction("0.80"), Fraction("1")], dtype=object),
+        "case5": np.array([Fraction("-1"), Fraction("-0.90"), Fraction("-0.8"), Fraction("0"), Fraction("0.8"), Fraction("0.90"), Fraction("1")], dtype=object),
+        "case6": np.array([Fraction("-1"), Fraction("-0.50"), Fraction("-0.1"), Fraction("0"), Fraction("0.1"), Fraction("0.50"), Fraction("1")], dtype=object),
+        "ESC optimal": np.array([Fraction("-1.00000000000000000000"), Fraction("-0.79278273580483960004"), Fraction("-0.42562886791263354613"), Fraction("0.00000000000000000000"), Fraction("0.42562886791263365716"), Fraction("0.79278273580484004412"), Fraction("1.00000000000000000000")], dtype=object),
+        "case1 optimal": np.array([Fraction("-1.00000000000000000000"), Fraction("-0.87551500000000004320"), Fraction("-0.28348400000000023580"), Fraction("0.00000000000000000000"), Fraction("0.28348400000000023580"), Fraction("0.87551500000000004320"), Fraction("1.00000000000000000000")], dtype=object),
+        "case2 optimal": np.array([Fraction("-1.00000000000000000000"), Fraction("-0.91087000000000273303"), Fraction("-0.49232000000000986084"), Fraction("0.00000000000000000000"), Fraction("0.49232000000000986084"), Fraction("0.91087000000000273303"), Fraction("1.00000000000000000000")], dtype=object),
+        "case3 optimal": np.array([Fraction("-1.00000000000000000000"), Fraction("-0.75110099999999946352"), Fraction("-0.23670000000000004925"), Fraction("0.00000000000000000000"), Fraction("0.23670000000000004925"), Fraction("0.75110099999999946352"), Fraction("1.00000000000000000000")], dtype=object),
+        "case4 optimal": np.array([Fraction("-1.00000000000000000000"), Fraction("-0.75110099999999946352"), Fraction("-0.23670000000000004925"), Fraction("0.00000000000000000000"), Fraction("0.23670000000000004925"), Fraction("0.75110099999999946352"), Fraction("1.00000000000000000000")], dtype=object),
+        # "case5 optimal": np.array([Fraction("-1.00000000000000000000"), Fraction("-0.75110099999999946352"), Fraction("-0.23670000000000004925"), Fraction("0.00000000000000000000"), Fraction("0.23670000000000004925"), Fraction("0.75110099999999946352"), Fraction("1.00000000000000000000")], dtype=object),
+        # "case6 optimal": np.array([Fraction("-1.00000000000000000000"), Fraction("-0.75110099999999946352"), Fraction("-0.23670000000000004925"), Fraction("0.00000000000000000000"), Fraction("0.23670000000000004925"), Fraction("0.75110099999999946352"), Fraction("1.00000000000000000000")], dtype=object),
     }
 
     ##################################################################################################################
@@ -77,8 +79,8 @@ if __name__ == "__main__":
     # for name in ("ESC","case1","case2","case3","case4","case5","case6"):
     #     initial_node = basis_sources[name]
     #     initial_node[0], initial_node[3], initial_node[-1] = -1, 0, 1
-    #     history = maximum.compass_search_ver3(
-    #         7, 0.001, 0.000001, initial_node.tolist()
+    #     history = compass_search.compass_search_ver3(
+    #         7, Fraction("0.001"), Fraction("0.000001"), initial_node.tolist()
     #     )
     #     histories[name] = history
     #     node_history, min_history, h_history = history
@@ -86,7 +88,7 @@ if __name__ == "__main__":
     #     print(f"{'step':>4} {'next h':>20} {'variance':>20}  nodes")
     #     for step, (node, value, step_h) in enumerate(zip(node_history, min_history, h_history)):
     #         node_text = ", ".join(f"{float(v):.20f}" for v in node)
-    #         print(f"{step:>4} {step_h:>20.15f} {float(value):>20.15e}  [{node_text}]")
+    #         print(f"{step:>4} {float(step_h):>20.15f} {float(value):>20.15e}  [{node_text}]")
 
     #     # 탐색은 mpmath로 하고 최종 노드만 Fraction 정확값으로 다시 확인한다.
     #     exact_maxima, _ = maximum.exact_maximums_and_weights(node_history[-1])
