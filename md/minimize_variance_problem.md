@@ -646,5 +646,68 @@ $$
 위 식들은 $n$의 짝홀 구분 없이 성립하며, $k\ne i$를 전제로 한다. $F_i^n$의 두 항에 모두 적용할 때는 $k\ne i,i+1$이어야 한다.
 <br><br><br>
 
+## $k = i$인 경우
+$\tau_i$는 $L_i^n$의 분모 $\prod_{q\ne i}(\tau_i-\tau_q)$, 즉 상수 배에만 들어 있고, $\tilde L_i^n = L_i^n/\omega_i^n$으로 정규화하면 그 상수 배가 약분된다. 따라서 $\tilde L_i^n$은 $\tau_i$에 무관하고
+$$
+\frac{\partial}{\partial\tau_i}\tilde L_i^n(t) = 0.
+$$
+<br><br><br>
+
+## 포락선 정리: $\frac{\partial}{\partial\tau_k}M_i^n$
+$T^+$에서 $M_i^n = F_i^n(t_i^*(\tau), \tau)$이므로 연쇄법칙에 의해
+$$
+\frac{\partial M_i^n}{\partial\tau_k}
+= \frac{\partial F_i^n}{\partial t}(t_i^*)\cdot\frac{\partial t_i^*}{\partial\tau_k}
++ \frac{\partial F_i^n}{\partial\tau_k}(t_i^*).
+$$
+$\frac{\partial F_i^n}{\partial t} = \tilde L_i^n - \tilde L_{i+1}^n$은 공통인수 $\prod_{j\ne i,i+1}(t-\tau_j)$와 1차식의 곱이고, 그 1차식의 근이 $t_i^*$이므로 $\frac{\partial F_i^n}{\partial t}(t_i^*) = 0$이다. 따라서 $t_i^*$가 움직이는 효과는 사라지고
+$$
+\frac{\partial M_i^n}{\partial\tau_k} = \frac{\partial F_i^n}{\partial\tau_k}(t_i^*).
+$$
+- 조건: $t_i^*$가 $(-1,1)$ 안의 유일한 최댓점이고(동점 없음), $t_i^*$가 $\tau$에 대해 미분 가능해야 한다. $T^+$에서는 모두 성립한다.
+- 확인 (n=7, ESC): $\frac{\partial t_i^*}{\partial\tau_k}$는 0.09 ~ 0.65로 0이 아니지만 $\frac{\partial F_i^n}{\partial t}(t_i^*) \approx 10^{-100}$ (100자리 계산의 반올림 수준)이라 첫째 항이 사라지고, $\frac{dM_i^n}{d\tau_k}$와 $\frac{\partial F_i^n}{\partial\tau_k}(t_i^*)$가 15자리까지 일치했다.
+- 음함수 정리로 $\frac{\partial t_i^*}{\partial\tau_k} = -\dfrac{\frac{\partial^2 F_i^n}{\partial\tau_k\partial t}(t_i^*)}{\frac{\partial^2 F_i^n}{\partial t^2}(t_i^*)}$을 구할 수 있지만 J에는 필요 없다.
+<br><br><br>
+
+## $\frac{\partial}{\partial\tau_k}F_i^n(t)$
+$F_i^n = G_i^n - G_{i+1}^n$, $G_j^n(t)+\frac12 = \int_{-1}^t\tilde L_j^n(s)\,ds$이므로
+$$
+\frac{\partial M_i^n}{\partial\tau_k} = \Phi_{ik}(t_i^*) - \Phi_{i+1,k}(t_i^*),
+\qquad \Phi_{jk}(t) := \int_{-1}^{t}\frac{\partial \tilde L_j^n}{\partial\tau_k}(s)\,ds.
+$$
+위의 $\frac{\partial}{\partial\tau_k}\tilde L_j^n$을 적분하면
+$$
+\Phi_{jk}(t) =
+\begin{cases}
+\dfrac{A_{jk}^n\,B_{jk}^n(t) - B_{jk}^n\,A_{jk}^n(t)}{\left(B_{jk}^n - \tau_k A_{jk}^n\right)^2} & k \ne j \\[2mm]
+0 & k = j
+\end{cases}
+$$
+$$
+A_{jk}^n(t) = \int_{-1}^{t} C_{jk}^n(s)\,ds, \qquad
+B_{jk}^n(t) = \int_{-1}^{t} s\,C_{jk}^n(s)\,ds, \qquad
+A_{jk}^n = A_{jk}^n(1),\quad B_{jk}^n = B_{jk}^n(1).
+$$
+$B_{jk}^n - \tau_k A_{jk}^n = (\tau_j-\tau_k)\,\omega_j^n \ne 0$이다.
+$$
+t_i^* = \frac{\alpha\,\tau_{i+1} - \beta\,\tau_i}{\alpha - \beta}, \qquad
+\alpha = \frac{\omega_{i+1}^n}{D_i},\quad \beta = \frac{\omega_i^n}{D_{i+1}},\quad
+D_i = \prod_{q \ne i} (\tau_i - \tau_q)
+$$
+<br><br><br>
+
+## Newton의 야코비안 $J$
+자유변수 $x_1,\dots,x_m$ $(m=\lfloor n/2\rfloor-1)$은 $\tau_{p(s)} = x_s$, $\tau_{q(s)} = -x_s$로 노드 두 개를 함께 움직인다. 방정식은 $f_r = M_1^n - M_{r+1}^n$ $(r=1,\dots,m)$이다.
+$$
+J_{rs} = \frac{\partial M_1^n}{\partial x_s} - \frac{\partial M_{r+1}^n}{\partial x_s},
+\qquad
+\frac{\partial M_i^n}{\partial x_s} = \frac{\partial M_i^n}{\partial \tau_{p(s)}} - \frac{\partial M_i^n}{\partial \tau_{q(s)}},
+\qquad p(s) = \left\lceil \tfrac{n}{2} \right\rceil + s,\quad q(s) = n+1-p(s)
+$$
+- 계산 순서: $(j,k)$ 쌍마다 다항식 $C_{jk}^n$, $sC_{jk}^n$을 만들고 $[-1,1]$과 $[-1,t^*]$에서 적분해 네 수 $A_{jk}^n, B_{jk}^n, A_{jk}^n(t^*), B_{jk}^n(t^*)$를 얻는다. $t^*$는 미분하지 않는다.
+- 비용: 기저를 한 번만 만들고 $(j,k)$ 쌍 $O(n^2)$개에 다항식 연산 $O(n)$ → $O(n^3)$. 중앙 차분은 기저를 $2m$번 다시 만들므로 $O(n^4)$. (n=30: 0.7초 vs 8.8초)
+- 확인: n = 6, 7, 10, 13에서 위 식과 중앙 차분 J의 차이가 $10^{-60}$ ~ $10^{-57}$ (중앙 차분 오차 수준).
+<br><br><br>
+
 # +a
 1. 가중치가 양수임을 가정하면 내분점임을 보장할 수 있지만, 내분점과 외분점으로는 가중치를 보장할 수 없음. -> 이걸 잘 알아보면 양수 가중치 조건을 찾는데 도움이 될지도
