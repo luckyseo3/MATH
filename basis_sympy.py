@@ -15,6 +15,7 @@ x, a, b = sp.symbols('x a b')
 
 # 1~2. 라그랑주 기저 L_i^n
 def lagrange_poly(i, nodes):
+    nodes = [sp.Rational(node) if isinstance(node, str) else sp.sympify(node) for node in nodes]
     L = sp.Integer(1)
     for j in range(len(nodes)):
         if i != j:
