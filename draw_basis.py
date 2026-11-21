@@ -16,7 +16,7 @@ def draw_adjustable_basis(nodes, parameters, *, ax=None):
     반환값은 (figure, axes, sliders)이며 sliders는 심볼을 키로 갖는다.
     """
     import matplotlib.pyplot as plt
-    import generate_basis
+    import basis_sympy
 
     nodes = [sp.sympify(node) for node in nodes]
     parameters = dict(parameters)
@@ -28,7 +28,7 @@ def draw_adjustable_basis(nodes, parameters, *, ax=None):
     for scope in parameters.values():
         if len(scope) != 4 or not (scope[0] < scope[1] and scope[0] <= scope[2] <= scope[1] and scope[3] > 0):
             raise ValueError('Each parameter needs (min, max, initial, positive step).')
-    basis = generate_basis.get_New_Basis(nodes, basis_name='adjustable')
+    basis = basis_sympy.get_New_Basis(nodes, basis_name='adjustable')
     functions = [sp.lambdify((x, *symbols), f, 'numpy') for f in basis]
     node_functions = [sp.lambdify(symbols, node, 'numpy') for node in nodes]
     t = np.linspace(-1, 1, 1000)
@@ -217,7 +217,7 @@ def draw_basis_selector(sources, n_initial=4, n_min=2, n_max=12, initial_basis=N
     """기저 선택과 차수 선택을 한 figure로 제공한다.
 
     sources는 {이름: 노드 생성 함수 또는 custom 노드} 딕셔너리다.
-    generate_nodes 모듈에 등록된 함수만 가변 n을 지원한다.
+    nodes 모듈에 등록된 함수만 가변 n을 지원한다.
     custom은 노드 배열(길이와 같은 n에서만 표시) 또는 {n: 노드 배열}로 받는다.
     custom에 해당 n이 없으면 그래프를 비우되 선택 상태는 유지한다.
     선택은 항상 하나이며 (fig, ax, radio, slider)를 반환한다.
@@ -227,8 +227,8 @@ def draw_basis_selector(sources, n_initial=4, n_min=2, n_max=12, initial_basis=N
     from functools import lru_cache
     from matplotlib.widgets import RadioButtons
     import matplotlib.pyplot as plt
-    import generate_basis as basis_generator
-    import generate_nodes as node_generators
+    import basis_sympy as basis_generator
+    import nodes as node_generators
 
     if not isinstance(sources, dict) or not sources:
         raise ValueError("Provide a non-empty dictionary of named node sources.")
@@ -250,11 +250,14 @@ def draw_basis_selector(sources, n_initial=4, n_min=2, n_max=12, initial_basis=N
             if np.any(np.abs(nodes.imag) > 1e-10):
                 raise ValueError("Nodes must be real.")
             nodes = nodes.real
-        nodes = np.asarray(nodes, dtype=float)
-        if (nodes.ndim != 1 or len(nodes) != degree or not np.all(np.isfinite(nodes))
-                or len(np.unique(nodes)) != degree):
+        if nodes.ndim != 1 or len(nodes) != degree:
             raise ValueError("Expected n distinct finite nodes.")
-        return nodes.copy()
+        # 기저 계산에는 정확값을 보존하고, float는 화면에 표시할 때만 사용한다.
+        nodes = np.array([sp.Rational(v) if isinstance(v, str) else sp.sympify(v)
+                          for v in nodes], dtype=object)
+        if any(v.is_finite is not True or v.is_real is not True for v in nodes) or len(set(nodes)) != degree:
+            raise ValueError("Expected n distinct finite nodes.")
+        return nodes
 
     registered = [value for value in vars(node_generators).values() if inspect.isfunction(value)
                   and value.__module__ == node_generators.__name__]
@@ -262,7 +265,7 @@ def draw_basis_selector(sources, n_initial=4, n_min=2, n_max=12, initial_basis=N
     for name, source in sources.items():
         if callable(source):
             if not any(source is function for function in registered):
-                raise ValueError(f"{name}: use a function defined in generate_nodes.py.")
+                raise ValueError(f"{name}: use a function defined in nodes.py.")
             normalized[name] = source
         else:
             mapping = source if isinstance(source, dict) else {len(source): source}
@@ -308,7 +311,7 @@ def draw_basis_selector(sources, n_initial=4, n_min=2, n_max=12, initial_basis=N
         nodes, values = data
         for index, y in enumerate(values):
             ax.plot(t, y, label=rf'$F_{{{index}}}^{{{degree}}}(t)$')
-        add_nodes(nodes, ax)
+        add_nodes(np.asarray(nodes, dtype=float), ax)
         ax.axhline(0, linewidth=0.8)
         ax.grid(True)
         ax.legend(loc='upper right', ncol=2 if len(values) > 8 else 1)
@@ -350,7 +353,7 @@ def draw_basis_selector(sources, n_initial=4, n_min=2, n_max=12, initial_basis=N
 def draw_adjustable_generalized_lebesgue_function(basis, a_initial=0.5, a_min=0.01, a_max=0.99, step=0.01):
     """매개변수 a가 포함된 기저의 일반화 르베그 함수를 슬라이더로 살펴본다."""
     import matplotlib.pyplot as plt
-    from generalized_Lebegue_constant import generalized_Lebegue_function
+    from generalized_lebegue_constant import generalized_Lebegue_function
 
     if not 0 < a_min <= a_initial <= a_max < 1 or step <= 0 or a_min == a_max:
         raise ValueError('Require 0 < a_min <= a_initial <= a_max < 1 and step > 0.')
@@ -391,8 +394,8 @@ def draw_generalized_lebesgue_function_selector(sources, n_initial=4, n_min=2, n
     """체크박스로 여러 기저의 일반화 르베그 함수를 비교하고 좌우 키로 n을 조절한다."""
     from functools import lru_cache
     import matplotlib.pyplot as plt
-    import generate_basis as basis_generator
-    from generalized_Lebegue_constant import generalized_Lebegue_function
+    import basis_sympy as basis_generator
+    from generalized_lebegue_constant import generalized_Lebegue_function
 
     if not isinstance(sources, dict) or not sources or any(
         not isinstance(name, str) or not name.strip() for name in sources
@@ -518,7 +521,7 @@ def draw_generalized_lebesgue_constant(sources, n_initial=4, n_min=2, n_max=12, 
     """
     from functools import lru_cache
     import matplotlib.pyplot as plt
-    from generalized_Lebegue_constant import generalized_constant_for_nodes
+    from generalized_lebegue_constant import generalized_constant_for_nodes
 
     if not isinstance(sources, dict) or not sources or any(
             not isinstance(name, str) or not name.strip() for name in sources):
