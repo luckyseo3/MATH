@@ -5,7 +5,7 @@ import inspect
 
 def _constant_identity(nodes, mode):
     import basis_cache
-    import generate_basis as generator
+    import basis_sympy as generator
 
     funcs = (generator.lagrange_poly, generator.lagrange_basis, generator.weights,
              generator.Normalized_Lagrange, generator.Cumulative_Lagrange,
@@ -25,7 +25,7 @@ def generalized_Lebegue_function(basis):
 
 def generalized_constant_for_nodes(nodes, basis_name=None):
     """노드에 대응하는 일반화 르베그 상수의 표본 근삿값을 반환한다."""
-    import generate_basis as generator
+    import basis_sympy as generator
     import generalized_lebesgue_cache as constant_cache
 
     nodes = np.asarray(nodes)
@@ -86,7 +86,7 @@ def generalized_Lebegue_constant_withA(n):
     위치에서는 선을 끊는다. (figure, axes)를 반환하며 show는 호출하지 않는다.
     """
     import matplotlib.pyplot as plt
-    import generate_basis as generator
+    import basis_sympy as generator
     import generalized_lebesgue_cache as constant_cache
 
     if isinstance(n, (bool, np.bool_)) or n not in (4, 5) or not isinstance(n, (int, np.integer)):
@@ -127,7 +127,7 @@ def generalized_Lebegue_constant_withA(n):
 
 def _sampled_constant(basis, x_values):
     """기저 함수 절댓값 합의 표본 최댓값을 반환한다."""
-    import generate_basis as generator
+    import basis_sympy as generator
 
     values = np.zeros_like(x_values)
     for f in basis:
