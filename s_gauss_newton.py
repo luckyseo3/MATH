@@ -1,4 +1,5 @@
 import basis_fraction
+import basis_mpmath
 import maximum
 from fractions import Fraction
 
@@ -79,6 +80,123 @@ def in_T_plus(node):
         return None, bad  # 예: [(2, 'tau4')] → F_2의 최댓값이 tau4에서 나옴
     return M, None
 
+# ---------------------------------------------------------------
+# 해석적 J (md "Gradient 구하기"). 인덱스는 Python 기준(0부터)이다.
+# ---------------------------------------------------------------
+
+# C_ik(t) = prod_{j != i, k} (t - τ_j) / (τ_i - τ_j)  의 계수 리스트 (상수항부터, 길이 n-1)
+# C_ik는 τ_k에 무관하고  L_i(t) = C_ik(t) · (t - τ_k) / (τ_i - τ_k)  이다.
+# 따라서 L_i를 (t - τ_k)로 합성 나눗셈한 몫에 (τ_i - τ_k)를 곱하면 된다. → O(n)
+# (일차식 n-2개를 처음부터 곱하면 O(n^2)이다.)
+# L_i(τ_k) = 0이므로 나머지는 0이다. Fraction이면 정확히 0, mpmath면 반올림 오차 수준이다.
+# L_i, tau_i, tau_k는 같은 종류의 수(Fraction 또는 mpf)이다.
+def C_polynomial(L_i, tau_i, tau_k):
+    quotient = [0] * (len(L_i) - 1)
+
+    # 합성 나눗셈: 최고차항부터 내려오며 r = c_d + τ_k · r
+    r = L_i[-1]
+    for d in range(len(L_i) - 2, -1, -1):
+        quotient[d] = r
+        r = L_i[d] + tau_k * r
+    # 여기서 r은 나머지 L_i(τ_k)이다.
+
+    return [q * (tau_i - tau_k) for q in quotient]
+
+# 상수항이 0인 부정적분의 계수 리스트
+def integral_polynomial(p):
+    zero = p[0] * 0
+    return [zero] + [c / (d + 1) for d, c in enumerate(p)]
+
+# Φ_jk(t) = ∫_{-1}^t ∂L~_j/∂τ_k (s) ds  를 points의 각 t에서 계산한다. (k != j)
+#   Φ_jk(t) = (A · B(t) - B · A(t)) / (B - τ_k A)^2
+#   A(t) = ∫_{-1}^t C_jk,  B(t) = ∫_{-1}^t s C_jk,  A = A(1),  B = B(1)
+# (k = j이면 L~_j가 τ_j에 무관하므로 Φ_jj = 0이다.)
+def Phi(L_j, tau_j, tau_k, points):
+    value_at = basis_mpmath.value_at
+    C = C_polynomial(L_j, tau_j, tau_k)
+    sC = [C[0] * 0] + C               # s · C_jk(s)
+    IA = integral_polynomial(C)
+    IB = integral_polynomial(sC)
+
+    A_m1, B_m1 = value_at(IA, -1), value_at(IB, -1)
+    A = value_at(IA, 1) - A_m1
+    B = value_at(IB, 1) - B_m1
+    denominator = (B - tau_k * A) ** 2   # = ((τ_j - τ_k) ω_j)^2 != 0
+
+    values = []
+    for t in points:
+        A_t = value_at(IA, t) - A_m1
+        B_t = value_at(IB, t) - B_m1
+        values.append((A * B_t - B * A_t) / denominator)
+    return values
+
+# 해석적 J (mp.workdps(dps) 안에서 호출). J[r, x] = ∂f_r/∂x_x,  f_r = M_1 - M_{r+2}  (r, x = 0, ..., cnt_x-1)
+# tau: mpf 노드, L, w: tau의 Lagrange 기저와 가중치 (basis_mpmath)
+#
+# 1. 포락선 정리: ∂M_i/∂τ_k = ∂F_i/∂τ_k (t*_i)  (t*_i는 미분하지 않는다)
+# 2. Python 인덱스에서 F_i = G_i - G_{i+1}은 L~_{i-1} - L~_i를 적분한 것이므로
+#      ∂M_i/∂τ_k = Φ_{i-1,k}(t*_i) - Φ_{i,k}(t*_i)
+# 3. 자유변수 x는 τ_{right+x} = x, τ_{left-x} = -x 이므로 ∂/∂x = ∂/∂τ_{right+x} - ∂/∂τ_{left-x}
+# 비용: (j, k) 쌍 O(n^2)개 × 다항식 연산 O(n) = O(n^3)
+def analytic_jacobian(tau, L, w):
+    from mpmath import mp
+    n = len(tau)
+    cnt_x = n//2 - 1
+    if n%2 == 0:  # move_ith_variable과 같은 인덱스
+        right = n // 2
+        left = right - 1
+    else:
+        right = n // 2 + 1
+        left = right - 2
+
+    # 대칭이므로 서로 다른 내부 최댓값 M_1, ..., M_{cnt_x+1}의 t*만 필요하다. (maximum.py와 같은 식)
+    star = {}
+    for i in range(1, cnt_x + 2):
+        alpha = w[i] * L[i-1][-1]
+        beta = w[i-1] * L[i][-1]
+        star[i] = (alpha * tau[i] - beta * tau[i-1]) / (alpha - beta)
+
+    # 움직이는 노드 k
+    K = [right + x for x in range(cnt_x)] + [left - x for x in range(cnt_x)]
+
+    # dM[i][k] = ∂M_i/∂τ_k
+    dM = {i: {k: mp.mpf(0) for k in K} for i in star}
+    for j in range(cnt_x + 2):
+        # L~_j는 F_{j+1}에 +로, F_j에 -로 들어간다.
+        uses = [(i, sign) for i, sign in ((j + 1, 1), (j, -1)) if i in star]
+        for k in K:
+            if k == j:
+                continue  # Φ_jj = 0
+            values = Phi(L[j], tau[j], tau[k], [star[i] for i, _ in uses])
+            for (i, sign), value in zip(uses, values):
+                dM[i][k] += sign * value
+
+    J = mp.matrix(cnt_x, cnt_x)
+    for x in range(cnt_x):
+        dM_dx = {i: dM[i][right + x] - dM[i][left - x] for i in dM}
+        for r in range(cnt_x):
+            J[r, x] = dM_dx[1] - dM_dx[r + 2]
+    return J
+
+# 중앙 차분 J (mp.workdps(dps) 안에서 호출). 해석적 J를 검증할 때 쓴다. 비용 O(n^4)
+def finite_difference_jacobian(node, dps):
+    from mpmath import mp
+    cnt_x = len(node)//2 - 1
+    # 중앙 차분 오차 ~ h^2 + 10^-dps / h 이므로 h = 10^(-dps*2/5) 정도로 둔다. (dps=100이면 10^-40)
+    h = Fraction(1, 10**(dps * 2 // 5))
+    J = mp.matrix(cnt_x, cnt_x)
+
+    for i in range(cnt_x):
+        node_plus = move_ith_variable(node, i, h)
+        node_minus = move_ith_variable(node, i, -h)
+        M_plus = maximum.precise_maximums_and_weights(node_plus, dps)[0]
+        M_minus = maximum.precise_maximums_and_weights(node_minus, dps)[0]
+
+        # f_j = M_1 - M_{j+2} (j = 0, ..., cnt_x-1)이므로 J[j, i] = ∂f_j/∂x_i
+        for j in range(cnt_x):
+            J[j, i] = ((M_plus[1] - M_plus[j + 2]) - (M_minus[1] - M_minus[j + 2])) / (2 * mp.mpf(h.numerator) / h.denominator)
+    return J
+
 def gauss_newton(
     initial_node,
     variance_tolerance,
@@ -110,19 +228,13 @@ def gauss_newton(
         # 1. JP = f(X_{n}) : mpmath(dps자리)로 계산
         with mp.workdps(dps):
             # 1.1. J 구하기
-            # 중앙 차분 오차 ~ h^2 + 10^-dps / h 이므로 h = 10^(-dps*2/5) 정도로 둔다. (dps=100이면 10^-40)
-            h = Fraction(1, 10**(dps * 2 // 5))
-            J = mp.matrix(cnt_x, cnt_x)
+            # 1.1.1. 현재 node의 L, w (mpmath, 반복마다 한 번: O(n^3))
+            tau = [mp.mpf(v.numerator) / v.denominator for v in node]
+            L = basis_mpmath.lagrange_basis(tau)
+            w = basis_mpmath.weights(L)
 
-            for i in range(cnt_x):
-                node_plus = move_ith_variable(node, i, h)
-                node_minus = move_ith_variable(node, i, -h)
-                M_plus = maximum.precise_maximums_and_weights(node_plus, dps)[0]
-                M_minus = maximum.precise_maximums_and_weights(node_minus, dps)[0]
-
-                # f_j = M_1 - M_{j+2} (j = 0, ..., cnt_x-1)이므로 J[j, i] = ∂f_j/∂x_i
-                for j in range(cnt_x):
-                    J[j, i] = ((M_plus[1] - M_plus[j + 2]) - (M_minus[1] - M_minus[j + 2])) / (2 * mp.mpf(h.numerator) / h.denominator)
+            # 1.1.2. 해석적 J: O(n^3)  (검증할 때는 finite_difference_jacobian(node, dps)와 비교)
+            J = analytic_jacobian(tau, L, w)
 
             # 1.2.  f(X_{n})} 구하기
             # 대칭이므로 서로 다른 내부 최댓값은 M_1, ..., M_{cnt_x+1}이다.
