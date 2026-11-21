@@ -1,12 +1,14 @@
 import numpy as np
+from fractions import Fraction
 import matplotlib.pyplot as plt
 import sympy as sp
 
-import generate_nodes as nodes
-import generate_basis as basis
+import nodes
+import basis_sympy as basis
 import draw_basis as draw
-import generalized_Lebegue_constant as generalized_lebesgue
+import generalized_lebegue_constant as generalized_lebesgue
 import maximum
+import s_compass_search as compass_search
 import draw_variance as variance_plot
 
 
@@ -15,17 +17,17 @@ if __name__ == "__main__":
     # 생성 함수를 전달하면 선택한 방식과 n에 맞춰 기저를 새로 계산한다.
     # n개 노드로 최대 n차인 n+1개의 기저함수를 생성한다.
     basis_sources = {
-        "GL": nodes.GL_nodes,
-        "GLo": nodes.GLo_nodes,
-        "Chev": nodes.Chebyshev_nodes,
-        "ESC": nodes.ESC_nodes(6),
-        "ESCLo": nodes.ESCLo_nodes,
-        "uniform": nodes.uniform_nodes,
-        "case1": np.array([-1.0, -0.2, -0.1, 0.1, 0.2, 1.0]),
-        "case2": np.array([-1.0, -0.8, -0.6, 0.6, 0.8, 1.0]),
-        "case3": np.array([-1.0, -0.9, -0.3, 0.3, 0.9, 1.0]),
-        "case3 optimize": np.array([-1.00000000000000000000, -0.87528199999999956038, -0.32611000000001294508, 0.32611000000001294508, 0.87528199999999956038, 1.00000000000000000000]),
-        "ESC optimize": np.array([-1.0, -0.72591380756887968762, -0.25409619243112524511, 0.25409619243112535614, 0.72591380756887979864, 1.00000000000000000000])
+        "GL": nodes.precise_GL_nodes,
+        "GLo": nodes.precise_GLo_nodes,
+        "Chev": nodes.precise_Chebyshev_nodes,
+        "ESC": nodes.ESC_nodes(6, dps=40),
+        "ESCLo": nodes.precise_ESCLo_nodes,
+        "uniform": nodes.precise_uniform_nodes,
+        "case1": np.array([Fraction("-1.0"), Fraction("-0.2"), Fraction("-0.1"), Fraction("0.1"), Fraction("0.2"), Fraction("1.0")], dtype=object),
+        "case2": np.array([Fraction("-1.0"), Fraction("-0.8"), Fraction("-0.6"), Fraction("0.6"), Fraction("0.8"), Fraction("1.0")], dtype=object),
+        "case3": np.array([Fraction("-1.0"), Fraction("-0.9"), Fraction("-0.3"), Fraction("0.3"), Fraction("0.9"), Fraction("1.0")], dtype=object),
+        "case3 optimize": np.array([Fraction("-1.00000000000000000000"), Fraction("-0.87528199999999956038"), Fraction("-0.32611000000001294508"), Fraction("0.32611000000001294508"), Fraction("0.87528199999999956038"), Fraction("1.00000000000000000000")], dtype=object),
+        "ESC optimize": np.array([Fraction("-1.0"), Fraction("-0.72591380756887968762"), Fraction("-0.25409619243112524511"), Fraction("0.25409619243112535614"), Fraction("0.72591380756887979864"), Fraction("1.00000000000000000000")], dtype=object)
     }
 
     ##################################################################################################################
@@ -73,8 +75,8 @@ if __name__ == "__main__":
     # 6️⃣ 끝점을 포함하는 노드들에서 시작해 분산을 줄이는 compass search
     histories = {}
     for name in ("case1", "case2", "case3", "ESC"):
-        history = maximum.compass_search_ver3(
-            6, 0.001, 0.000001, basis_sources[name].tolist()
+        history = compass_search.compass_search_ver3(
+            6, Fraction("0.001"), Fraction("0.000001"), basis_sources[name].tolist()
         )
         histories[name] = history
         node_history, min_history, h_history = history
@@ -82,7 +84,7 @@ if __name__ == "__main__":
         # print(f"{'step':>4} {'next h':>20} {'variance':>20}  nodes")
         # for step, (node, value, step_h) in enumerate(zip(node_history, min_history, h_history)):
         #     node_text = ", ".join(f"{float(v):.20f}" for v in node)
-        #     print(f"{step:>4} {step_h:>20.15f} {float(value):>20.15e}  [{node_text}]")
+        #     print(f"{step:>4} {float(step_h):>20.15f} {float(value):>20.15e}  [{node_text}]")
 
         # 탐색은 mpmath로 하고 최종 노드만 Fraction 정확값으로 다시 확인한다.
         exact_maxima, _ = maximum.exact_maximums_and_weights(node_history[-1])
