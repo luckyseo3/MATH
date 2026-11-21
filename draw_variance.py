@@ -13,6 +13,7 @@ import numpy as np
 import sympy as sp
 
 import maximum
+import s_compass_search as compass_search
 
 
 def symmetric_nodes(n, params):
@@ -387,12 +388,12 @@ def variance_colormap(low, high, color_max=0.0, red_at=4.0):
 
 
 def cached_compass_search(n, h, h_limit, initial_node):
-    """maximum.compass_search_ver3의 결과를 variance_cache/n{n}/compass.json을 거쳐 구한다.
+    """compass_search.compass_search_ver3의 결과를 variance_cache/n{n}/compass.json을 거쳐 구한다.
 
     h, h_limit, 시작 노드와 탐색 코드가 모두 같을 때만 저장된 결과를 재사용한다.
     """
     source = "".join(inspect.getsource(function) for function in (
-        maximum.compass_search_ver3, maximum.precise_variance_of_maximums_of_F,
+        compass_search.compass_search_ver3, maximum.precise_variance_of_maximums_of_F,
         maximum.precise_maximums_and_weights))
     code = hashlib.sha256(source.encode('utf-8')).hexdigest()[:16]
     key = "|".join([code, repr(h), repr(h_limit), *(repr(float(v)) for v in initial_node)])
@@ -402,7 +403,7 @@ def cached_compass_search(n, h, h_limit, initial_node):
     if key in runs:
         return runs[key]
 
-    node_history, min_history, h_history = maximum.compass_search_ver3(n, h, h_limit, initial_node)
+    node_history, min_history, h_history = compass_search.compass_search_ver3(n, h, h_limit, initial_node)
     runs[key] = [[[float(v) for v in node] for node in node_history],
                  [float(v) for v in min_history], [float(v) for v in h_history]]
     path.parent.mkdir(parents=True, exist_ok=True)
