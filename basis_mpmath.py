@@ -6,6 +6,7 @@
 """
 
 from mpmath import mp
+from fractions import Fraction
 
 ##########################################
 # 1. 노드 설정: n개
@@ -20,7 +21,8 @@ from mpmath import mp
 # node는 문자열 배열이다.
 def lagrange_poly(i, node):
 
-    node = [mp.mpf(value) for value in node]
+    node = [mp.mpf(value.numerator) / value.denominator
+            if isinstance(value, Fraction) else mp.mpf(value) for value in node]
     n = len(node)
 
     # 계수 리스트를 관리하는 방식
@@ -49,7 +51,8 @@ def lagrange_poly(i, node):
 # node는 문자열 배열이다.
 def lagrange_basis(node):
 
-    node = [mp.mpf(value) for value in node]
+    node = [mp.mpf(value.numerator) / value.denominator
+            if isinstance(value, Fraction) else mp.mpf(value) for value in node]
     if not node:
         raise ValueError("At least one node is required")
     if not all(mp.isfinite(value) for value in node):
