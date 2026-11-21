@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-import generate_nodes as nodes
+import nodes
 import draw_basis as draw
 from optimal_nodes_maximum import optimal_node
 
