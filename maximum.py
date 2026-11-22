@@ -4,6 +4,7 @@
 - exact_maximums_and_weights (+ exact_variance): Fraction으로 오차 없이. 정확도용 (격자 정답지, 후보 지도, 최종 확인)
 - precise_maximums_and_weights (+ precise_variance_of_maximums_of_F): mpmath dps자리로. 속도용 (탐색)
 """
+import math
 from fractions import Fraction
 
 def exact_maximums_and_weights(node, active=False):
@@ -71,8 +72,16 @@ def exact_maximums_and_weights(node, active=False):
 def exact_variance(values):
     """Return the population variance of Fractions without rounding."""
     values = [Fraction(value) for value in values]
-    mean = sum(values) / len(values)  # values가 Fraction 등 정확한 수일 때만 아래 연산에 부동소수점 오차가 없다.
-    return sum((value - mean) ** 2 for value in values) / len(values)
+    n = len(values)
+
+    # 공통분모 D = n * lcm(분모들). 분모의 곱보다 자릿수가 작고(실제 최댓값에서 약 절반),
+    # n을 곱해 두었으므로 sum(numer)가 n으로 나누어떨어져 평균도 정수가 된다.
+    common_denom = n * math.lcm(*(v.denominator for v in values))
+    numer = [v.numerator * (common_denom // v.denominator) for v in values]  # D * v_i (정수)
+    mean_numer = sum(numer) // n  # D * mean (정수, 나머지 없음)
+
+    # Var = sum((D v_i - D mean)^2) / (n D^2). 끝까지 정수 연산이고 마지막에 한 번만 약분한다.
+    return Fraction(sum((x - mean_numer) ** 2 for x in numer), n * common_denom**2)
 
 def precise_maximums_and_weights(node, dps=40):
     """exact_maximums_and_weights와 같은 후보에서 mpmath(dps자리)로 최댓값과 가중치를 구한다.
