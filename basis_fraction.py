@@ -1,3 +1,4 @@
+import math
 from fractions import Fraction
 
 ##########################################
@@ -45,13 +46,28 @@ def lagrange_basis(node):
 
 # 다항함수의 함숫값을 구하는 것은 a*t + b 에 t를 곱하고 다음 계수를 더하는 과정을 반복하는 것
 # point도 문자열이라고 가정
+#
+# Fraction으로 Horner를 하면 매 단계 약분(gcd)을 하므로 느리다. 그래서 정수로 계산하고 마지막에 한 번만 약분한다.
+#   계수 c_k = a_k / C  (C = 분모들의 lcm),  point = p / q  이면
+#   P(p/q) = (sum_k a_k p^k q^(d-k)) / (C q^d)
+#   분자는 정수 Horner로 구한다: r = a_d,  r <- r*p + a_k*q^(d-k)  (k = d-1, ..., 0)
 def value_at(polynomial, point):
 
     point = Fraction(point)
-    result = Fraction(0)
-    for coefficient in reversed(polynomial):
-        result = result * point + coefficient
-    return result
+    coefficients = [Fraction(coefficient) for coefficient in polynomial]
+    if not coefficients:
+        return Fraction(0)
+
+    p, q = point.numerator, point.denominator
+    C = math.lcm(*(c.denominator for c in coefficients))
+    a = [c.numerator * (C // c.denominator) for c in coefficients]
+
+    result = a[-1]
+    q_power = 1
+    for a_k in reversed(a[:-1]):
+        q_power *= q
+        result = result * p + a_k * q_power
+    return Fraction(result, C * q_power)
 
 def weights(L):
 
