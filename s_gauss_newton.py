@@ -50,14 +50,14 @@ def solve_linear(J, f):
         pivot = next((r for r in range(col, m) if A[r][col] != 0), None)
         if pivot is None:
             raise ValueError(f"singular Jacobian (column {col})")
-        A[col], A[pivot] = A[pivot], A[col]
+        A[col], A[pivot] = A[pivot], A[col] # pivot을 대각선에 위치하기
 
-        p = A[col][col]
-        A[col] = [a / p for a in A[col]]
+        p = A[col][col] # pivot값을 담을 변수 p
+        A[col] = [a / p for a in A[col]] # pivot으로 열을 나누기
         for r in range(m):
             if r != col and A[r][col] != 0:
                 factor = A[r][col]
-                A[r] = [a - factor * b for a, b in zip(A[r], A[col])]
+                A[r] = [a - factor * b for a, b in zip(A[r], A[col])] # 열의 나머지 원소를 0으로 만들기
 
     return [A[r][m] for r in range(m)]
 
