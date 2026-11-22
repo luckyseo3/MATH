@@ -69,8 +69,14 @@ def exact_maximums_and_weights(node, active=False):
 
     return (M, w, labels) if active else (M, w)
 
-def exact_variance(values):
-    """Return the population variance of Fractions without rounding."""
+def exact_variance(values, gcd=True):
+    """모분산을 반올림 없이 구한다.
+
+    gcd=True이면 약분한 Fraction을, gcd=False이면 약분하지 않은 (분자, 분모) 정수 튜플을 반환한다.
+    튜플의 분모는 항상 양수이다.
+    큰 n에서는 Fraction의 약분(gcd)이 분산 계산 시간의 약 40%를 차지하지만 거의 줄지 않는다
+    (n = 20에서 약 77만 비트 중 12비트). 비교만 할 때는 a/b < c/d  <=>  a*d < c*b 로 충분하다.
+    """
     values = [Fraction(value) for value in values]
     n = len(values)
 
@@ -80,8 +86,10 @@ def exact_variance(values):
     numer = [v.numerator * (common_denom // v.denominator) for v in values]  # D * v_i (정수)
     mean_numer = sum(numer) // n  # D * mean (정수, 나머지 없음)
 
-    # Var = sum((D v_i - D mean)^2) / (n D^2). 끝까지 정수 연산이고 마지막에 한 번만 약분한다.
-    return Fraction(sum((x - mean_numer) ** 2 for x in numer), n * common_denom**2)
+    # Var = sum((D v_i - D mean)^2) / (n D^2). 끝까지 정수 연산이다.
+    numerator = sum((x - mean_numer) ** 2 for x in numer)
+    denominator = n * common_denom**2
+    return Fraction(numerator, denominator) if gcd else (numerator, denominator)
 
 def precise_maximums_and_weights(node, dps=40):
     """exact_maximums_and_weights와 같은 후보에서 mpmath(dps자리)로 최댓값과 가중치를 구한다.

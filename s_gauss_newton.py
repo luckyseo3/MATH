@@ -197,6 +197,13 @@ def finite_difference_jacobian(node, dps):
             J[j, i] = ((M_plus[1] - M_plus[j + 2]) - (M_minus[1] - M_minus[j + 2])) / (2 * mp.mpf(h.numerator) / h.denominator)
     return J
 
+# 분산 (분자, 분모) 튜플 (분모 > 0) 끼리의 비교와 float 변환
+def ratio_less(a, b):
+    return a[0] * b[1] < b[0] * a[1]  # a/b < c/d  <=>  a*d < c*b
+
+def ratio_to_float(a):
+    return a[0] / a[1]  # 큰 정수끼리의 / 도 정확히 반올림된 float를 준다.
+
 def gauss_newton(
     initial_node,
     variance_tolerance,
@@ -216,14 +223,18 @@ def gauss_newton(
     M, reason = in_T_plus(node)
     if M is None:
         raise ValueError(f"initial node is not in T+ ({reason})")
-    var = maximum.exact_variance(M[1:-1])
+    # 분산은 약분하지 않은 (분자, 분모) 튜플로 다루고 교차곱으로 비교한다 (Fraction 약분 비용을 피한다).
+    var = maximum.exact_variance(M[1:-1], gcd=False)
+    tolerance = Fraction(variance_tolerance)
+    tolerance = (tolerance.numerator, tolerance.denominator)
 
     # compass_search와 같은 형식: history[0][k], history[1][k]는 k번째 반복 후의 노드와 분산 (k = 0은 시작점)
+    # 분산은 float로 기록한다. 정확한 값이 필요하면 노드에서 maximum.exact_variance로 다시 구한다.
     node_history = [node]
-    variance_history = [var]
+    variance_history = [ratio_to_float(var)]
     history = [node_history, variance_history]
 
-    while(var > variance_tolerance):
+    while ratio_less(tolerance, var):
 
         # 1. JP = f(X_{n}) : mpmath(dps자리)로 계산
         with mp.workdps(dps):
@@ -260,8 +271,8 @@ def gauss_newton(
             M_new, reason = in_T_plus(node_new)
             if M_new is not None:
                 # 4. Var(X_{n+1})
-                var_new = maximum.exact_variance(M_new[1:-1])
-                if var_new < var:
+                var_new = maximum.exact_variance(M_new[1:-1], gcd=False)
+                if ratio_less(var_new, var):
                     break
                 reason = "variance did not decrease"
 
@@ -271,7 +282,7 @@ def gauss_newton(
 
         node, M, var = node_new, M_new, var_new
         node_history.append(node)
-        variance_history.append(var)
+        variance_history.append(ratio_to_float(var))
         if callback is not None:
             callback(history)
 
