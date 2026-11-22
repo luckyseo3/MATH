@@ -6,6 +6,7 @@
   n마다 별도 프로세스에서 병렬로 계산한다.
 - 계산 중에는 SAVE_INTERVAL초마다 variance_cache/nBig/n{n}.partial.json에 탐색 상태를 저장하고 진행 상황을 출력한다.
   중간에 멈춰도 다시 실행하면 설정이 같을 때 저장된 상태부터 이어서 계산한다. 끝나면 partial 파일은 지운다.
+- n = 9 ~ 35에서 Gauss-Newton(s_gauss_newton.gauss_newton)으로 얻은 노드(variance_cache/newton/n{n}.json)도 함께 그린다.
 """
 import json
 import multiprocessing
@@ -20,8 +21,10 @@ import nodes
 import draw_basis as draw
 import maximum
 import s_compass_search as compass_search
+import s_gauss_newton as gauss_newton
 
 N_VALUES = range(10, 16)
+NEWTON_N_VALUES = range(9, 36)
 H_INITIAL = 0.001   # ESC와 최적 노드의 거리는 0.01 정도이다.
 H_LIMIT = 1e-8      # 위치를 1e-8까지 다듬는다. 분산은 DPS자리로 계산하므로 비교가 오차에 묻히지 않는다.
 DPS = 40            # n=20에서 Fraction 정확값과 15자리 이상 일치한다.
@@ -139,17 +142,22 @@ if __name__ == "__main__":
     print_summary(results)
 
     ##################################################################################################################
-    # 3️⃣ 차수별 기저 함수: 슬라이더(또는 좌우 방향키)로 n을, 라디오 버튼으로 ESC / compass를 고른다.
+    # 3️⃣ 차수별 기저 함수: 슬라이더(또는 좌우 방향키)로 n을, 라디오 버튼으로 ESC / compass / newton을 고른다.
+    # newton 노드는 저장된 free variable(Fraction 문자열)로 정확히 복원한다.
+    newton_dir = CACHE_DIR.parent / 'newton'
     basis_sources = {
         "ESC": nodes.ESC_nodes,
         "compass": {n: np.array(r['node']) for n, r in results.items()},
+        "newton": {n: gauss_newton.variable_to_node(
+                       json.loads((newton_dir / f'n{n}.json').read_text(encoding='utf-8'))['free'], n)
+                   for n in NEWTON_N_VALUES},
     }
     fig, ax, basis_selector, degree_slider = draw.draw_basis_selector(
         basis_sources,
         n_initial=N_VALUES[0],
-        n_min=N_VALUES[0],
-        n_max=N_VALUES[-1],
-        initial_basis="compass",
+        n_min=NEWTON_N_VALUES[0],
+        n_max=NEWTON_N_VALUES[-1],
+        initial_basis="newton",
     )
 
     plt.show()
