@@ -1,6 +1,7 @@
 import numpy as np
 import sympy as sp
 import inspect
+from functools import lru_cache
 
 from matplotlib.widgets import CheckButtons, Slider
 
@@ -146,8 +147,53 @@ def draw_basis_of_0val(F, ax):
 
     return t_values, basis_funcs, lines
 
-def add_nodes(nodes, ax):
-    return ax.scatter(nodes, np.zeros(len(nodes)))
+def add_nodes(nodes, ax, **kwargs):
+    return ax.scatter(nodes, np.zeros(len(nodes)), **kwargs)
+
+
+def _srgb_to_lab(rgb):
+    """sRGB(0~1) 배열을 CIELAB(D65)로 바꾼다. Lab 거리는 사람이 느끼는 색 차이에 가깝다."""
+    rgb = np.asarray(rgb, dtype=float)
+    linear = np.where(rgb <= 0.04045, rgb / 12.92, ((rgb + 0.055) / 1.055) ** 2.4)
+    xyz = linear @ np.array([[0.4124, 0.3576, 0.1805],
+                             [0.2126, 0.7152, 0.0722],
+                             [0.0193, 0.1192, 0.9505]]).T
+    xyz /= np.array([0.95047, 1.0, 1.08883])
+    f = np.where(xyz > (6 / 29) ** 3, np.cbrt(xyz), xyz / (3 * (6 / 29) ** 2) + 4 / 29)
+    return np.stack([116 * f[..., 1] - 16,
+                     500 * (f[..., 0] - f[..., 1]),
+                     200 * (f[..., 1] - f[..., 2])], axis=-1)
+
+
+@lru_cache(maxsize=None)
+def distinct_colors(count):
+    """서로 최대한 다른 색 count개를 반환한다. 같은 색은 절대 두 번 나오지 않는다.
+
+    sRGB 격자의 후보 중에서, 이미 고른 색과 Lab 거리가 가장 먼 색을 하나씩 고른다
+    (greedy farthest-point). 흰 배경, 검은 노드 점과도 멀어지도록 둘을 처음부터 고른 색으로 친다.
+    회색 계열(채도가 낮은 색)과 너무 밝거나 어두운 색은 후보에서 뺀다.
+    앞쪽 색일수록 서로 더 멀리 떨어져 있으므로 F_0, F_1처럼 앞 번호부터 차례로 쓴다.
+    """
+    if count < 1:
+        return ()
+    levels = np.linspace(0, 1, 26)
+    candidates = np.stack(np.meshgrid(levels, levels, levels, indexing='ij'), axis=-1).reshape(-1, 3)
+    lab = _srgb_to_lab(candidates)
+    chroma = np.hypot(lab[:, 1], lab[:, 2])
+    keep = (lab[:, 0] >= 25) & (lab[:, 0] <= 85) & (chroma >= 20)
+    candidates, lab = candidates[keep], lab[keep]
+    if count > len(candidates):
+        raise ValueError(f"Cannot make {count} distinct colors.")
+
+    seeds = _srgb_to_lab(np.array([[1.0, 1.0, 1.0], [0.0, 0.0, 0.0]]))
+    nearest = np.min(np.linalg.norm(lab[:, None, :] - seeds[None, :, :], axis=-1), axis=1)
+    chosen = []
+    for _ in range(count):
+        index = int(np.argmax(nearest))
+        chosen.append(tuple(float(v) for v in candidates[index]))
+        nearest = np.minimum(nearest, np.linalg.norm(lab - lab[index], axis=1))
+        nearest[index] = -1.0  # 이미 고른 색은 다시 고르지 않는다.
+    return tuple(chosen)
 
 def add_basis_checkboxes(basisArr, nodesArr, fig, ax):
     caller_locals = inspect.currentframe().f_back.f_locals
@@ -309,10 +355,11 @@ def draw_basis_selector(sources, n_initial=4, n_min=2, n_max=12, initial_basis=N
             # custom에 정의되지 않은 차수: 이전 선과 노드를 모두 제거한다.
             return
         nodes, values = data
-        for index, y in enumerate(values):
-            ax.plot(t, y, label=rf'$F_{{{index}}}^{{{degree}}}(t)$')
-        add_nodes(np.asarray(nodes, dtype=float), ax)
-        ax.axhline(0, linewidth=0.8)
+        # 기본 색 순환(10색)은 n >= 10이면 같은 색이 반복되므로 곡선마다 다른 색을 쓴다.
+        for index, (y, color) in enumerate(zip(values, distinct_colors(len(values)))):
+            ax.plot(t, y, color=color, label=rf'$F_{{{index}}}^{{{degree}}}(t)$')
+        add_nodes(np.asarray(nodes, dtype=float), ax, color='black', zorder=3)
+        ax.axhline(0, color='0.3', linewidth=0.8)
         ax.grid(True)
         # ax.legend(loc='upper right', ncol=2 if len(values) > 8 else 1)
 
