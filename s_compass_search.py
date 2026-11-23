@@ -1,7 +1,7 @@
 """
-분산 계산의 기본값은 maximum.precise_variance_of_maximums_of_F이다.
+분산 계산의 기본값은 calculate_variance.precise_variance_of_maximums_of_F이다.
 """
-from maximum import precise_variance_of_maximums_of_F
+from calculate_variance import precise_variance_of_maximums_of_F
 
 # 변화한 노드의 weight이 0이 되는 경우 예외처리 해야함
 def compass_search(n, # 노드의 크기

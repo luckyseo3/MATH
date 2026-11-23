@@ -1,3 +1,4 @@
+import sys, pathlib; sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))  # 공통 모듈
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -8,7 +9,6 @@ from optimal_nodes_maximum import optimal_node
 
 N_MIN = 4
 N_MAX = 35
-
 
 if __name__ == "__main__":
 

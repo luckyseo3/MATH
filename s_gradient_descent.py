@@ -1,11 +1,12 @@
 """분산을 줄이는 gradient descent (대칭 노드).
 
-- 변수: 양수 쪽 내부 노드 x = (tau_{(n+1)//2+1}, ..., tau_{n-1}) (0과 1 제외, 오름차순).
+- 변수: 양수 쪽 내부 노드 x = (tau_{(n+1)//2+1}, ..., tau_{n-1}) (0과 끝 노드 a 제외, 오름차순).
+  끝 노드 ±a(endpoint_variable)는 initial_node의 양 끝에서 읽고 움직이지 않는다.
   compass search처럼 대칭 쌍을 함께 움직이므로 노드는 항상 원점 대칭이다.
-- 목적함수: 내부 F_1 ~ F_{n-1} 최댓값의 모분산 (maximum.precise_maximums_and_weights, mpmath dps자리).
+- 목적함수: 내부 F_1 ~ F_{n-1} 최댓값의 모분산 (calculate_maximum.precise_maximums_and_weights, mpmath dps자리).
   비교와 차분이 float 반올림(상대오차 1e-16)에 묻히지 않도록 분산을 mpf 그대로 쓴다.
 - gradient: 기본은 중앙차분 (f(x+h e_j) - f(x-h e_j)) / 2h, 오차 O(h^2).
-  해석적 gradient를 만들면 gradient_function=으로 바꿔 끼운다. (x, n, dps) -> mpf 리스트.
+  해석적 gradient를 만들면 gradient_function=으로 바꿔 끼운다. (x, n, dps, a) -> mpf 리스트.
 - step 크기: 줄어들면 받아들이기 (compass search의 "좋아지면 이동, 아니면 h를 줄이기"와 같은 생각).
   f(x - t g) < f(x) 이면 받아들이고, 아니면 t를 절반으로 줄여 다시 시도한다.
   다음 반복은 직전에 받아들인 t의 2배에서 시작한다.
@@ -19,12 +20,14 @@ from fractions import Fraction
 
 from mpmath import mp
 
-import maximum
+import calculate_maximum
+import calculate_variance
 
 
-def full_node(x, n):
-    """양수 쪽 노드 x로 대칭 노드 전체를 만든다."""
-    return [mp.mpf(-1), *[-v for v in reversed(x)], *([mp.mpf(0)] if n % 2 else []), *x, mp.mpf(1)]
+def full_node(x, n, a=1):
+    """양수 쪽 노드 x와 끝 노드 a로 대칭 노드 전체를 만든다."""
+    a = mp.mpf(a.numerator) / a.denominator if isinstance(a, Fraction) else mp.mpf(a)
+    return [-a, *[-v for v in reversed(x)], *([mp.mpf(0)] if n % 2 else []), *x, a]
 
 
 def half_node(node, n):
@@ -32,16 +35,16 @@ def half_node(node, n):
     return [mp.mpf(v) for v in node[(n + 1) // 2:-1]]
 
 
-def variance(x, n, dps=40):
+def variance(x, n, dps=40, a=1):
     """내부 최댓값의 모분산을 mpf로 반환한다."""
     with mp.workdps(dps):
-        M, _ = maximum.precise_maximums_and_weights(full_node(x, n), dps)
+        M, _ = calculate_maximum.precise_maximums_and_weights(full_node(x, n, a), dps)
         M = M[1:-1]
         mean = mp.fsum(M) / len(M)
         return mp.fsum((value - mean) ** 2 for value in M) / len(M)
 
 
-def central_difference_gradient(x, n, dps=40, h=mp.mpf('1e-12')):
+def central_difference_gradient(x, n, dps=40, a=1, h=mp.mpf('1e-12')):
     """중앙차분 gradient. dps=40에서 h=1e-12이면 절단오차 ~h^2, 반올림오차 ~1e-38/h 모두 충분히 작다."""
     with mp.workdps(dps):
         gradient = []
@@ -49,34 +52,36 @@ def central_difference_gradient(x, n, dps=40, h=mp.mpf('1e-12')):
             plus, minus = x[:], x[:]
             plus[j] += h
             minus[j] -= h
-            gradient.append((variance(plus, n, dps) - variance(minus, n, dps)) / (2 * h))
+            gradient.append((variance(plus, n, dps, a) - variance(minus, n, dps, a)) / (2 * h))
         return gradient
 
 
-def is_valid(x):
-    """0 < x_1 < ... < x_k < 1 이어야 노드가 서로 다르고 순서가 유지된다."""
-    return 0 < x[0] and all(a < b for a, b in zip(x, x[1:])) and x[-1] < 1
+def is_valid(x, a=1):
+    """0 < x_1 < ... < x_k < a 이어야 노드가 서로 다르고 순서가 유지된다."""
+    return 0 < x[0] and all(p < q for p, q in zip(x, x[1:])) and x[-1] < a
 
 
 def gradient_descent(n, # 노드의 크기
-                     initial_node, # 초기 노드 (대칭, 끝점 ±1 포함)
+                     initial_node, # 초기 노드 (대칭, 양 끝은 ±a)
                      max_iterations=1000, # 최대 반복 횟수
                      variance_tolerance=1e-30, # 분산이 이보다 작아지면 멈춘다 (15자리 격자 노드의 바닥 근처)
                      step_limit=1e-30, # 줄어드는 step을 찾다가 step이 이보다 작아지면 멈춘다
                      initial_step=1e-3, # 첫 반복에서 시도하는 step
                      dps=40, # mpmath 자릿수
-                     gradient_function=central_difference_gradient, # (x, n, dps) -> gradient
+                     gradient_function=central_difference_gradient, # (x, n, dps, a) -> gradient
                      on_step=None # 반복마다 on_step(반복 번호, 노드, 분산, step)을 호출한다
                      ):
 
     with mp.workdps(dps):
+        end = initial_node[-1]  # 끝 노드 a (endpoint_variable)
+        a = mp.mpf(end.numerator) / end.denominator if isinstance(end, Fraction) else mp.mpf(end)
         x = half_node(initial_node, n)
-        if not is_valid(x):
-            raise ValueError("initial_node must be symmetric with 0 < positive nodes < 1 in increasing order")
-        value = variance(x, n, dps)
+        if not is_valid(x, a):
+            raise ValueError("initial_node must be symmetric with 0 < positive nodes < a in increasing order")
+        value = variance(x, n, dps, a)
         step = mp.mpf(initial_step)
 
-        node_history = [full_node(x, n)]
+        node_history = [full_node(x, n, a)]
         variance_history = [value]
         step_history = [mp.mpf(0)]
         history = [node_history, variance_history, step_history]
@@ -84,13 +89,13 @@ def gradient_descent(n, # 노드의 크기
         for iteration in range(1, max_iterations + 1):
             if value < variance_tolerance:
                 break
-            gradient = gradient_function(x, n, dps)
+            gradient = gradient_function(x, n, dps, a)
 
             # 분산이 줄어드는 step을 찾을 때까지 절반으로 줄인다.
             while step >= step_limit:
                 candidate = [v - step * g for v, g in zip(x, gradient)]
-                if is_valid(candidate):
-                    candidate_value = variance(candidate, n, dps)
+                if is_valid(candidate, a):
+                    candidate_value = variance(candidate, n, dps, a)
                     if candidate_value < value:
                         break
                 step /= 2
@@ -98,7 +103,7 @@ def gradient_descent(n, # 노드의 크기
                 break  # 더 줄일 수 있는 step이 없다.
 
             x, value = candidate, candidate_value
-            node_history.append(full_node(x, n))
+            node_history.append(full_node(x, n, a))
             variance_history.append(value)
             step_history.append(step)
             if on_step is not None:
@@ -143,6 +148,6 @@ if __name__ == "__main__":
     print("노드 (양수 쪽): " + ", ".join(mp.nstr(v, 20) for v in half_node(final, N)))
 
     # 탐색은 mpmath로 하고 최종 노드만 Fraction 정확값으로 다시 확인한다.
-    exact_maxima, exact_weights = maximum.exact_maximums_and_weights([to_fraction(v) for v in final])
-    print(f"exact check: {float(maximum.exact_variance(exact_maxima[1:-1])):.15e}, "
+    exact_maxima, exact_weights = calculate_maximum.exact_maximums_and_weights([to_fraction(v) for v in final])
+    print(f"exact check: {float(calculate_variance.exact_variance(exact_maxima[1:-1])):.15e}, "
           f"min weight {float(min(exact_weights)):.4g}")

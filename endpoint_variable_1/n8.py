@@ -1,12 +1,17 @@
+import sys, pathlib; sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))  # 공통 모듈
+from fractions import Fraction
+ENDPOINT_VARIABLE = Fraction(1)  # 끝 노드 a: 노드의 양 끝은 ±a
+VARIANCE_CACHE = pathlib.Path(__file__).resolve().parent / 'variance_cache'  # 이 a로 구한 결과
 import numpy as np
 from fractions import Fraction
 import matplotlib.pyplot as plt
 import sympy as sp
 
 import nodes
-import basis_sympy as basis
+import construct_basis_sympy as basis
 import draw_basis as draw
-import maximum
+import calculate_maximum
+import calculate_variance
 import draw_variance as variance_plot
 
 # 격자 간격은 1/GRID_N이다.
@@ -58,7 +63,7 @@ if __name__ == "__main__":
     # 3️⃣ 노드 (-1, -c, -b, -a, a, b, c, 1)에서 a, b, c에 따른 내부 F_1~F_7 최댓값 분산
     # 유리수 격자점에서 Fraction으로 오차 없이 계산하며, 분산이 작을수록 점이 크다.
     # 결과는 variance_cache/n8/N{GRID_N}/에 저장되어 중단해도 이어서 계산한다.
-    variance_plot.variance_volume(GRID_N, n=8)
+    variance_plot.variance_volume(GRID_N, n=8, endpoint_variable=ENDPOINT_VARIABLE, cache_dir=VARIANCE_CACHE)
 
     ##################################################################################################################
     # 4️⃣ 지정한 (a, b, c)에서 시작해 분산을 줄이는 compass search
@@ -86,17 +91,17 @@ if __name__ == "__main__":
     #     histories[name] = history
 
     #     # 탐색은 numpy로 하고 시작 노드와 최종 노드만 Fraction으로 다시 확인한다.
-    #     _, start_weights = maximum.exact_maximums_and_weights(initial_node)
+    #     _, start_weights = calculate_maximum.exact_maximums_and_weights(initial_node)
     #     final_node = history[0][-1]
-    #     final_maxima, final_weights = maximum.exact_maximums_and_weights(final_node)
+    #     final_maxima, final_weights = calculate_maximum.exact_maximums_and_weights(final_node)
     #     print(f"{name:>14} {str(min(start_weights) > 0):>8} {len(history[0]) - 1:>6} "
     #           f"{final_node[-4]:>12.8f} {final_node[-3]:>12.8f} {final_node[-2]:>12.8f} "
-    #           f"{float(maximum.exact_variance(final_maxima[1:-1])):>22.15e} {str(min(final_weights) > 0):>8}")
+    #           f"{float(calculate_variance.exact_variance(final_maxima[1:-1])):>22.15e} {str(min(final_weights) > 0):>8}")
 
     # SHOW_HISTORIES로 탐색 경로의 처음 상태를 정하고, 그림 오른쪽의 "history" 체크박스로 켜고 끈다.
     SHOW_HISTORIES = True
     fig_variance, ax_variance, variance_sliders = variance_plot.draw_variance_volume(
-        GRID_N, n=8, histories=histories, show_histories=SHOW_HISTORIES
+        GRID_N, n=8, cache_dir=VARIANCE_CACHE, histories=histories, show_histories=SHOW_HISTORIES
     )
 
     plt.show()

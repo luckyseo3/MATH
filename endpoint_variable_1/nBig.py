@@ -1,13 +1,17 @@
 """n = 10 ~ 15에서 ESC 노드로 시작하는 compass search(compass_search.compass_search_ver3)를 수행하고 결과를 분석한다.
 
 - 초깃값: ESC 노드를 정확히 대칭으로 맞춘 것 (끝점 ±1, 홀수 n이면 가운데 0)
-- 분산 계산: maximum.precise_variance_of_maximums_of_F (mpmath DPS자리)
+- 분산 계산: calculate_variance.precise_variance_of_maximums_of_F (mpmath DPS자리)
 - 결과는 variance_cache/nBig/n{n}.json에 저장되어, 설정이 같으면 다시 계산하지 않는다.
   n마다 별도 프로세스에서 병렬로 계산한다.
 - 계산 중에는 SAVE_INTERVAL초마다 variance_cache/nBig/n{n}.partial.json에 탐색 상태를 저장하고 진행 상황을 출력한다.
   중간에 멈춰도 다시 실행하면 설정이 같을 때 저장된 상태부터 이어서 계산한다. 끝나면 partial 파일은 지운다.
-- n = 9 ~ 35에서 Gauss-Newton(s_gauss_newton.gauss_newton)으로 얻은 노드(variance_cache/newton/n{n}.json)도 함께 그린다.
+- n = 9 ~ 35에서 Gauss-Newton(s_newton_method.gauss_newton)으로 얻은 노드(variance_cache/newton/n{n}.json)도 함께 그린다.
 """
+import sys, pathlib; sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))  # 공통 모듈
+from fractions import Fraction
+ENDPOINT_VARIABLE = Fraction(1)  # 끝 노드 a: 노드의 양 끝은 ±a
+VARIANCE_CACHE = pathlib.Path(__file__).resolve().parent / 'variance_cache'  # 이 a로 구한 결과
 import json
 import multiprocessing
 import os
@@ -19,9 +23,10 @@ import matplotlib.pyplot as plt
 
 import nodes
 import draw_basis as draw
-import maximum
+import calculate_maximum
+import calculate_variance
 import s_compass_search as compass_search
-import s_gauss_newton as gauss_newton
+import s_newton_method as gauss_newton
 
 N_VALUES = range(10, 16)
 NEWTON_N_VALUES = range(9, 36)
@@ -31,17 +36,18 @@ DPS = 40            # n=20에서 Fraction 정확값과 15자리 이상 일치한
 SEARCH = 'compass_search_ver3'  # compass_search의 탐색 함수 이름. 설정에 들어가므로 다른 탐색의 결과와 섞이지 않는다.
 SAVE_INTERVAL = 60  # 탐색 상태를 저장하는 간격 (초)
 
-CACHE_DIR = Path(__file__).resolve().parent / 'variance_cache' / 'nBig'
+CACHE_DIR = VARIANCE_CACHE / 'nBig'
 
 
 def esc_initial_node(n):
     """ESC 노드를 정확히 대칭으로 맞춘다. compass search는 대칭 쌍을 함께 움직이므로 대칭이 유지된다."""
-    half = [float(v) for v in nodes.ESC_nodes(n)[(n + 1) // 2:-1]]
-    return [-1.0, *[-v for v in reversed(half)], *([0.0] if n % 2 else []), *half, 1.0]
+    a = float(ENDPOINT_VARIABLE)
+    half = [float(v) for v in nodes.ESC_nodes(n, endpoint_variable=ENDPOINT_VARIABLE)[(n + 1) // 2:-1]]
+    return [-a, *[-v for v in reversed(half)], *([0.0] if n % 2 else []), *half, a]
 
 
 def variance(node):
-    return maximum.precise_variance_of_maximums_of_F(node, DPS)
+    return calculate_variance.precise_variance_of_maximums_of_F(node, DPS)
 
 
 def settings(n):
@@ -93,7 +99,7 @@ def run(n):
     elapsed = elapsed_before + time.perf_counter() - start
 
     final = node_history[-1]
-    M, weights = maximum.precise_maximums_and_weights(final, DPS)
+    M, weights = calculate_maximum.precise_maximums_and_weights(final, DPS)
     result = {
         'settings': settings(n),
         'esc_variance': float(min_history[0]),
@@ -149,7 +155,7 @@ if __name__ == "__main__":
         "ESC": nodes.ESC_nodes,
         "compass": {n: np.array(r['node']) for n, r in results.items()},
         "newton": {n: gauss_newton.variable_to_node(
-                       json.loads((newton_dir / f'n{n}.json').read_text(encoding='utf-8'))['free'], n)
+                       json.loads((newton_dir / f'n{n}.json').read_text(encoding='utf-8'))['free'], n, ENDPOINT_VARIABLE)
                    for n in NEWTON_N_VALUES},
     }
     fig, ax, basis_selector, degree_slider = draw.draw_basis_selector(

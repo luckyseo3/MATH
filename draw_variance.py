@@ -1,4 +1,9 @@
-"""0 대칭·끝점 포함 노드에서 매개변수에 따른 내부 F_i 최댓값 분산을 3차원으로 그린다."""
+"""0 대칭 노드에서 매개변수에 따른 내부 F_i 최댓값 분산을 3차원으로 그린다.
+
+양 끝 노드는 ±a(endpoint_variable)이고, 격자 매개변수(0 < p < 1)는 a에 대한 비율이다. 실제 노드는 a·p이다.
+a(endpoint_variable)와 결과를 저장할 폴더(cache_dir)는 호출하는 쪽이 인자로 넘긴다.
+관찰 폴더 endpoint_variable_{a}의 스크립트는 cache_dir로 그 폴더의 variance_cache/를 넘긴다.
+"""
 from fractions import Fraction
 import gzip
 import hashlib
@@ -12,12 +17,40 @@ import time
 import numpy as np
 import sympy as sp
 
-import maximum
+import calculate_maximum
+
+import calculate_variance
 import s_compass_search as compass_search
 
 
-def symmetric_nodes(n, params):
-    return [-1, *(-p for p in reversed(params)), *([0] if n % 2 else []), *params, 1]
+def symmetric_nodes(n, params, endpoint_variable):
+    """끝 노드 ±a 사이의 대칭 노드. params는 a에 대한 비율이므로 a = 1이면 params가 곧 노드이다."""
+    nodes = [-1, *(-p for p in reversed(params)), *([0] if n % 2 else []), *params, 1]
+    a = Fraction(endpoint_variable)
+    return nodes if a == 1 else [a * v for v in nodes]
+
+
+def plane_nodes(n, a, b, endpoint_variable):
+    """(a, b) 평면 격자점의 대칭 노드.
+
+    endpoint_variable이 있으면 양 끝을 ±endpoint_variable로 고정한 n=6, 7 노드
+    [-1, -b, -a, (0), a, b, 1](a배)이고, None이면 b가 끝 노드인 n=4, 5 노드 [-b, -a, (0), a, b]이다.
+    """
+    if endpoint_variable is None:
+        return [-b, -a, *([0] if n % 2 else []), a, b]
+    return symmetric_nodes(n, (a, b), endpoint_variable)
+
+
+def plane_last_column(N, endpoint_variable):
+    """b = j/N의 마지막 j. 끝 노드를 고정하면 b < 1이고, b가 끝 노드이면 b = 1까지 계산한다."""
+    return N if endpoint_variable is None else N - 1
+
+
+def plane_rows(N, n, cache_dir):
+    """저장된 평면 격자의 행 i(a = i/N) 범위. 첫 행의 길이로 b = 1까지 계산했는지 알아낸다."""
+    with np.load(volume_slab_path(cache_dir, n, N, 1)) as data:
+        last = 1 + len(data['V'])
+    return range(1, last)
 
 
 def to_fraction(value):
@@ -25,61 +58,61 @@ def to_fraction(value):
     return Fraction(str(value)) if isinstance(value, sp.Basic) else Fraction(value)
 
 
-def has_negative_weight(n, params):
+def has_negative_weight(n, params, endpoint_variable):
     """가중치 중 0 이하가 있는지. 가중치가 정확히 0이면 정의되지 않으므로 True로 본다."""
     try:
-        _, weights = maximum.precise_maximums_and_weights(symmetric_nodes(n, [float(p) for p in params]))
+        _, weights = calculate_maximum.precise_maximums_and_weights(symmetric_nodes(n, [float(p) for p in params], endpoint_variable))
     except ValueError:
         return True
     return min(weights) < 0
 
 
-def load_points(n):
-    path = Path(__file__).resolve().parent / 'variance_cache' / f'n{n}' / 'variance.json'
+def load_points(n, cache_dir):
+    path = Path(cache_dir) / f'n{n}' / 'variance.json'
     return json.loads(path.read_text(encoding='utf-8'))['points'] if path.exists() else {}
 
 
-def save_points(n, points):
-    path = Path(__file__).resolve().parent / 'variance_cache' / f'n{n}' / 'variance.json'
+def save_points(n, points, cache_dir):
+    path = Path(cache_dir) / f'n{n}' / 'variance.json'
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps({'points': points}, indent=1), encoding='utf-8')
 
 
-def cached_variance(n, params, points):
+def cached_variance(n, params, points, endpoint_variable):
     """params의 분산을 points에서 읽고, 없으면 계산해 추가한다. 정의되지 않으면 NaN."""
     key = ",".join(str(p) for p in params)
     if key not in points:
         try:
-            M, _ = maximum.exact_maximums_and_weights(symmetric_nodes(n, [to_fraction(p) for p in params]))
-            points[key] = {'value': float(maximum.exact_variance(M[1:-1])), 'exact': None}
+            M, _ = calculate_maximum.exact_maximums_and_weights(symmetric_nodes(n, [to_fraction(p) for p in params], endpoint_variable))
+            points[key] = {'value': float(calculate_variance.exact_variance(M[1:-1])), 'exact': None}
         except ValueError:  # 가중치가 0인 점
             points[key] = {'value': None, 'exact': None}
     value = points[key]['value']
     return np.nan if value is None else value
 
 
-def variance_curve(a_values, *, n=5):
+def variance_curve(a_values, *, n=5, endpoint_variable, cache_dir):
     """노드 [-1, -a, 0, a, 1](n=5) 또는 [-1, -a, a, 1](n=4)에서 a에 따른 분산을 구한다.
 
     0 < a < 1이 아니거나 가중치가 0이 되어 정의되지 않는 점은 NaN으로 둔다.
     """
     if n not in (4, 5):
         raise ValueError("3D curve needs exactly one parameter (n = 4 or 5)")
-    points = load_points(n)
+    points = load_points(n, cache_dir)
     computed = len(points)
 
     V = np.full(len(a_values), np.nan)
     for p, a in enumerate(a_values):
         a = sp.Rational(str(a))
         if 0 < a < 1:
-            V[p] = cached_variance(n, (a,), points)
+            V[p] = cached_variance(n, (a,), points, endpoint_variable)
 
     if len(points) != computed:
-        save_points(n, points)
+        save_points(n, points, cache_dir)
     return V
 
 
-def variance_grid(a_values, b_values, *, n=6):
+def variance_grid(a_values, b_values, *, n=6, endpoint_variable, cache_dir):
     """(a, b) 격자에서 양 끝을 제외한 분산을 variance_cache/n{n}/variance.json을 거쳐 구한다.
 
     n=6이면 노드 [-1, -b, -a, a, b, 1], n=7이면 [-1, -b, -a, 0, a, b, 1].
@@ -87,7 +120,7 @@ def variance_grid(a_values, b_values, *, n=6):
     """
     if n not in (6, 7):
         raise ValueError("3D surface needs exactly two parameters (n = 6 or 7)")
-    points = load_points(n)
+    points = load_points(n, cache_dir)
     computed = len(points)
 
     Z = np.full((len(a_values), len(b_values)), np.nan)
@@ -95,15 +128,15 @@ def variance_grid(a_values, b_values, *, n=6):
         for q, b in enumerate(b_values):
             a, b = sp.Rational(str(a)), sp.Rational(str(b))
             if 0 < a < b < 1:
-                Z[p, q] = cached_variance(n, (a, b), points)
+                Z[p, q] = cached_variance(n, (a, b), points, endpoint_variable)
 
     if len(points) != computed:
-        save_points(n, points)
+        save_points(n, points, cache_dir)
     return Z
 
 
-def volume_slab_path(n, N, i):
-    return (Path(__file__).resolve().parent / 'variance_cache' / f'n{n}' / f'N{N}'
+def volume_slab_path(cache_dir, n, N, i):
+    return (Path(cache_dir) / f'n{n}' / f'N{N}'
             / f'a{i:04d}.npz')
 
 
@@ -115,8 +148,8 @@ def compute_volume_slab(task):
     a{i}.exact.txt.gz: 내부 분산의 정확한 값 "분자/분모"를 한 줄에 하나씩 저장한다.
     (b, c)는 저장하지 않으며 np.triu_indices의 순서로 복원한다. 정의되지 않은 점은 NaN이다.
     """
-    n, N, i = task
-    path = volume_slab_path(n, N, i)
+    n, N, i, endpoint_variable, cache_dir = task
+    path = volume_slab_path(cache_dir, n, N, i)
     count = (N - 1 - i) * (N - 2 - i) // 2
     V = np.full(count, np.nan)
     V_all = np.full(count, np.nan)
@@ -133,14 +166,14 @@ def compute_volume_slab(task):
         for j in range(i + 1, N - 1):
             for k in range(j + 1, N):
                 try:
-                    M, weights = maximum.exact_maximums_and_weights(
-                        symmetric_nodes(n, (a, Fraction(j, N), Fraction(k, N))))
+                    M, weights = calculate_maximum.exact_maximums_and_weights(
+                        symmetric_nodes(n, (a, Fraction(j, N), Fraction(k, N)), endpoint_variable))
                 except ValueError:
                     exact_file.write('nan\n')
                 else:
-                    inner = maximum.exact_variance(M[1:-1])
+                    inner = calculate_variance.exact_variance(M[1:-1])
                     V[position] = float(inner)
-                    V_all[position] = float(maximum.exact_variance(M))
+                    V_all[position] = float(calculate_variance.exact_variance(M))
                     M_values[position] = [float(value) for value in M]
                     weight_values[position] = [float(value) for value in weights]
                     positive[position] = min(weights) > 0
@@ -156,7 +189,7 @@ def compute_volume_slab(task):
     return count
 
 
-def variance_volume(N, *, n=8, workers=None):
+def variance_volume(N, *, n=8, endpoint_variable, cache_dir, workers=None):
     """0 < a < b < c < 1인 간격 1/N 격자의 분산을 병렬로 계산한다.
 
     n=8이면 노드 [-1, -c, -b, -a, a, b, c, 1], n=9이면 가운데에 0이 추가된다.
@@ -165,11 +198,12 @@ def variance_volume(N, *, n=8, workers=None):
     """
     if n not in (8, 9):
         raise ValueError("Volume needs exactly three parameters (n = 8 or 9)")
-    tasks = [(n, N, i) for i in range(1, N - 2) if not volume_slab_path(n, N, i).exists()]
+    tasks = [(n, N, i, endpoint_variable, cache_dir) for i in range(1, N - 2)
+             if not volume_slab_path(cache_dir, n, N, i).exists()]
     if not tasks:
         return
 
-    total = sum((N - 1 - i) * (N - 2 - i) // 2 for _, _, i in tasks)
+    total = sum((N - 1 - i) * (N - 2 - i) // 2 for _, _, i, _, _ in tasks)
     print(f"n={n}, 1/N={1 / N:g}: {len(tasks)} slabs, {total:,} points to compute")
     start = time.perf_counter()
     done = 0
@@ -182,7 +216,7 @@ def variance_volume(N, *, n=8, workers=None):
                   f"remaining about {remaining / 3600:.2f} h", flush=True)
 
 
-def load_variance_volume(N, *, n=8):
+def load_variance_volume(N, *, n=8, cache_dir):
     """양수 가중치 격자점들의 (a, b, c 인덱스, 분산)과 격자 위의 국소 최솟값을 반환한다.
 
     국소 최솟값은 주변 26개 격자점 중 양수 가중치인 점들보다 분산이 작은 점이다.
@@ -191,7 +225,7 @@ def load_variance_volume(N, *, n=8):
     def layer(i):
         grid = np.full((N + 1, N + 1), np.nan)
         if 1 <= i <= N - 3:
-            with np.load(volume_slab_path(n, N, i)) as data:
+            with np.load(volume_slab_path(cache_dir, n, N, i)) as data:
                 V, positive = data['V'], data['positive']
             j, k = np.triu_indices(N - 1 - i, 1)
             keep = positive & (V > 0)
@@ -234,13 +268,14 @@ def load_variance_volume(N, *, n=8):
 
 
 def compute_plane_row(task):
-    """n=6, 7에서 a=i/N로 고정한 모든 b의 결과를 Fraction으로 정확히 계산해 저장한다.
+    """a=i/N로 고정한 모든 b의 결과를 Fraction으로 정확히 계산해 저장한다. 노드는 plane_nodes를 따른다.
 
     저장 형식은 compute_volume_slab과 같고, j번째 값은 b=(i+1+j)/N이다.
     """
-    n, N, i = task
-    path = volume_slab_path(n, N, i)
-    count = N - 1 - i
+    n, N, i, endpoint_variable, cache_dir = task
+    path = volume_slab_path(cache_dir, n, N, i)
+    last = plane_last_column(N, endpoint_variable)
+    count = last - i
     V = np.full(count, np.nan)
     V_all = np.full(count, np.nan)
     M_values = np.full((count, n + 1), np.nan)
@@ -252,16 +287,16 @@ def compute_plane_row(task):
     exact_temp = path.with_name(path.stem + '.exact.tmp')
     a = Fraction(i, N)
     with gzip.open(exact_temp, 'wt', encoding='ascii', newline='\n') as exact_file:
-        for position, j in enumerate(range(i + 1, N)):
+        for position, j in enumerate(range(i + 1, last + 1)):
             try:
-                M, weights = maximum.exact_maximums_and_weights(
-                    symmetric_nodes(n, (a, Fraction(j, N))))
+                M, weights = calculate_maximum.exact_maximums_and_weights(
+                    plane_nodes(n, a, Fraction(j, N), endpoint_variable))
             except ValueError:
                 exact_file.write('nan\n')
                 continue
-            inner = maximum.exact_variance(M[1:-1])
+            inner = calculate_variance.exact_variance(M[1:-1])
             V[position] = float(inner)
-            V_all[position] = float(maximum.exact_variance(M))
+            V_all[position] = float(calculate_variance.exact_variance(M))
             M_values[position] = [float(value) for value in M]
             weight_values[position] = [float(value) for value in weights]
             positive[position] = min(weights) > 0
@@ -275,19 +310,23 @@ def compute_plane_row(task):
     return count
 
 
-def variance_plane(N, *, n=6, workers=None):
-    """0 < a < b < 1인 간격 1/N 격자의 분산을 Fraction으로 정확히 계산한다.
+def variance_plane(N, *, n=6, endpoint_variable, cache_dir, workers=None):
+    """간격 1/N 격자의 (a, b) 평면에서 분산을 Fraction으로 정확히 계산한다.
 
-    n=6이면 노드 [-1, -b, -a, a, b, 1], n=7이면 가운데에 0이 추가된다.
-    a 값 하나가 끝날 때마다 variance_cache/n{n}/N{N}/에 저장하므로 중단해도 이어서 계산한다.
+    endpoint_variable이 있으면 0 < a < b < 1, n=6이면 노드 [-1, -b, -a, a, b, 1](양 끝 ±endpoint_variable),
+    n=7이면 가운데에 0이 추가된다.
+    endpoint_variable=None이면 b가 끝 노드인 0 < a < b <= 1, n=4이면 노드 [-b, -a, a, b], n=5이면 가운데에 0.
+    a 값 하나가 끝날 때마다 cache_dir/n{n}/N{N}/에 저장하므로 중단해도 이어서 계산한다.
     """
-    if n not in (6, 7):
-        raise ValueError("Plane needs exactly two parameters (n = 6 or 7)")
-    tasks = [(n, N, i) for i in range(1, N - 1) if not volume_slab_path(n, N, i).exists()]
+    if n not in ((4, 5) if endpoint_variable is None else (6, 7)):
+        raise ValueError("Plane needs exactly two parameters (n = 6, 7, or n = 4, 5 with endpoint_variable=None)")
+    last = plane_last_column(N, endpoint_variable)
+    tasks = [(n, N, i, endpoint_variable, cache_dir) for i in range(1, last)
+             if not volume_slab_path(cache_dir, n, N, i).exists()]
     if not tasks:
         return
 
-    total = sum(N - 1 - i for _, _, i in tasks)
+    total = sum(last - i for _, _, i, _, _ in tasks)
     print(f"n={n}, 1/N={1 / N:g}: {len(tasks)} rows, {total:,} points to compute")
     start = time.perf_counter()
     done = 0
@@ -301,8 +340,8 @@ def variance_plane(N, *, n=6, workers=None):
     print()
 
 
-def active_row_path(n, N, i):
-    return volume_slab_path(n, N, i).with_suffix('.active.npz')
+def active_row_path(cache_dir, n, N, i):
+    return volume_slab_path(cache_dir, n, N, i).with_suffix('.active.npz')
 
 
 def compute_active_row(task):
@@ -310,14 +349,14 @@ def compute_active_row(task):
 
     label은 F_i별 후보 이름을 ","로 이은 문자열이며, 가중치가 0인 점은 빈 문자열이다.
     """
-    n, N, i = task
-    path = active_row_path(n, N, i)
+    n, N, i, endpoint_variable, cache_dir = task
+    path = active_row_path(cache_dir, n, N, i)
     labels = []
     a = Fraction(i, N)
-    for j in range(i + 1, N):
+    for j in range(i + 1, plane_last_column(N, endpoint_variable) + 1):
         try:
-            _, _, active = maximum.exact_maximums_and_weights(
-                symmetric_nodes(n, (a, Fraction(j, N))), active=True)
+            _, _, active = calculate_maximum.exact_maximums_and_weights(
+                plane_nodes(n, a, Fraction(j, N), endpoint_variable), active=True)
         except ValueError:
             labels.append('')
         else:
@@ -329,12 +368,14 @@ def compute_active_row(task):
     return len(labels)
 
 
-def active_plane(N, *, n=6, workers=None):
+def active_plane(N, *, n=6, endpoint_variable, cache_dir, workers=None):
     """variance_plane과 같은 격자에서 최댓값 후보 라벨을 계산한다. 중단해도 이어서 계산한다."""
-    tasks = [(n, N, i) for i in range(1, N - 1) if not active_row_path(n, N, i).exists()]
+    last = plane_last_column(N, endpoint_variable)
+    tasks = [(n, N, i, endpoint_variable, cache_dir) for i in range(1, last)
+             if not active_row_path(cache_dir, n, N, i).exists()]
     if not tasks:
         return
-    total = sum(N - 1 - i for _, _, i in tasks)
+    total = sum(last - i for _, _, i, _, _ in tasks)
     print(f"active candidates n={n}, 1/N={1 / N:g}: {total:,} points to compute")
     start = time.perf_counter()
     done = 0
@@ -347,25 +388,26 @@ def active_plane(N, *, n=6, workers=None):
     print()
 
 
-def load_active_plane(N, *, n=6):
+def load_active_plane(N, *, n=6, cache_dir):
     """(N+1)x(N+1) 정수 라벨 격자(-1은 정의되지 않음)와 라벨 이름 목록을 반환한다."""
     ids = np.full((N + 1, N + 1), -1, dtype=np.int32)
     names = {}
-    for i in range(1, N - 1):
-        with np.load(active_row_path(n, N, i)) as data:
+    for i in plane_rows(N, n, cache_dir):
+        with np.load(active_row_path(cache_dir, n, N, i)) as data:
             row = data['labels']
-        ids[i, i + 1:N] = [names.setdefault(label, len(names)) if label else -1 for label in row]
+        ids[i, i + 1:i + 1 + len(row)] = [names.setdefault(label, len(names)) if label else -1 for label in row]
     return ids, list(names)
 
 
-def load_variance_plane(N, *, n=6):
+def load_variance_plane(N, *, n=6, cache_dir):
     """(N+1)x(N+1) 격자 V[i, j](a=i/N, b=j/N)와 positive를 반환한다. 정의되지 않으면 NaN."""
     V = np.full((N + 1, N + 1), np.nan)
     positive = np.zeros((N + 1, N + 1), dtype=bool)
-    for i in range(1, N - 1):
-        with np.load(volume_slab_path(n, N, i)) as data:
-            V[i, i + 1:N] = data['V']
-            positive[i, i + 1:N] = data['positive']
+    for i in plane_rows(N, n, cache_dir):
+        with np.load(volume_slab_path(cache_dir, n, N, i)) as data:
+            end = i + 1 + len(data['V'])
+            V[i, i + 1:end] = data['V']
+            positive[i, i + 1:end] = data['positive']
     return V, positive
 
 
@@ -387,18 +429,18 @@ def variance_colormap(low, high, color_max=0.0, red_at=4.0):
     return cmap, TwoSlopeNorm(vmin=low, vcenter=split, vmax=top)
 
 
-def cached_compass_search(n, h, h_limit, initial_node):
+def cached_compass_search(n, h, h_limit, initial_node, *, cache_dir):
     """compass_search.compass_search_ver3의 결과를 variance_cache/n{n}/compass.json을 거쳐 구한다.
 
     h, h_limit, 시작 노드와 탐색 코드가 모두 같을 때만 저장된 결과를 재사용한다.
     """
     source = "".join(inspect.getsource(function) for function in (
-        compass_search.compass_search_ver3, maximum.precise_variance_of_maximums_of_F,
-        maximum.precise_maximums_and_weights))
+        compass_search.compass_search_ver3, calculate_variance.precise_variance_of_maximums_of_F,
+        calculate_maximum.precise_maximums_and_weights))
     code = hashlib.sha256(source.encode('utf-8')).hexdigest()[:16]
     key = "|".join([code, repr(h), repr(h_limit), *(repr(float(v)) for v in initial_node)])
 
-    path = Path(__file__).resolve().parent / 'variance_cache' / f'n{n}' / 'compass.json'
+    path = Path(cache_dir) / f'n{n}' / 'compass.json'
     runs = json.loads(path.read_text(encoding='utf-8')) if path.exists() else {}
     if key in runs:
         return runs[key]
@@ -466,7 +508,7 @@ def add_view_sliders(fig, ax, elev, azim):
     return elev_slider, azim_slider
 
 
-def draw_variance_curve(a_values, V, *, n=5, histories=None):
+def draw_variance_curve(a_values, V, *, n=5, endpoint_variable, histories=None):
     """매개변수가 a 하나일 때 x=a, y=log10(분산)인 2차원 곡선을 그린다.
 
     음수 가중치가 있는 구간은 점선으로 표시한다.
@@ -482,7 +524,7 @@ def draw_variance_curve(a_values, V, *, n=5, histories=None):
     L = np.full_like(V, np.nan)
     L[mask] = np.log10(V[mask])
 
-    negative = np.array([mask[p] and has_negative_weight(n, (A[p],)) for p in range(len(A))])
+    negative = np.array([mask[p] and has_negative_weight(n, (A[p],), endpoint_variable) for p in range(len(A))])
 
     fig, ax = plt.subplots(figsize=(9, 6))
     ax.plot(A, np.where(negative, np.nan, L), color="black", linewidth=1, label="variance")
@@ -502,7 +544,7 @@ def draw_variance_curve(a_values, V, *, n=5, histories=None):
     return fig, ax
 
 
-def draw_variance_surface(a_values, b_values, Z, *, n=6, histories=None, elev=25, azim=-130,
+def draw_variance_surface(a_values, b_values, Z, *, n=6, endpoint_variable, histories=None, elev=25, azim=-130,
                           max_points=400, max_mesh=60):
     """마우스 드래그와 elev/azim 슬라이더로 돌려볼 수 있는 3차원 그래프.
 
@@ -542,7 +584,7 @@ def draw_variance_surface(a_values, b_values, Z, *, n=6, histories=None, elev=25
     negative = np.zeros_like(mask)
     for p in range(0, A.shape[0], stride):
         for q in range(0, A.shape[1], stride):
-            negative[p, q] = mask[p, q] and has_negative_weight(n, (A[p, q], B[p, q]))
+            negative[p, q] = mask[p, q] and has_negative_weight(n, (A[p, q], B[p, q]), endpoint_variable)
     if negative.any():
         ax.scatter(A[negative], B[negative], L[negative], color="black", s=1, linewidths=0,
                    depthshade=False, label="negative weight")
@@ -563,7 +605,7 @@ def draw_variance_surface(a_values, b_values, Z, *, n=6, histories=None, elev=25
     return fig, ax, add_view_sliders(fig, ax, elev, azim)
 
 
-def draw_variance_volume(N, *, n=8, max_points=3000, points_limit=30000, max_size=10,
+def draw_variance_volume(N, *, n=8, cache_dir, max_points=3000, points_limit=30000, max_size=10,
                          color_max=0.0, red_at=4.0, zoom_limit=50, elev=25, azim=-130,
                          histories=None, show_histories=True):
     """(a, b, c) 위치에 양수 가중치 격자점을 찍고, 분산은 점의 크기와 색으로 나타낸다.
@@ -579,7 +621,7 @@ def draw_variance_volume(N, *, n=8, max_points=3000, points_limit=30000, max_siz
     from matplotlib.cm import ScalarMappable
     from matplotlib.widgets import Slider
 
-    points, minima = load_variance_volume(N, n=n)
+    points, minima = load_variance_volume(N, n=n, cache_dir=cache_dir)
     if len(points['V']) == 0:
         raise ValueError("No grid point has all positive weights")
     L = np.log10(points['V'])
@@ -682,25 +724,29 @@ def label_text(label):
     return "(" + ", ".join(part.replace("tau", "τ") for part in label.split(",")) + ")"
 
 
-def draw_active_regions(N, *, n=6, histories=None, show_histories=True):
+def draw_active_regions(N, *, n=6, cache_dir, histories=None, show_histories=True, show_boundaries=False,
+                        near_zero=None, curve=None):
     """(a, b) 평면을 내부 F_1~F_{n-1}의 최댓값 후보 조합별로 색칠한 지도.
 
     색이 바뀌는 곳이 분산이 미분 불가능할 수 있는 경계이다. 검은 실선/점선/일점쇄선은
     가중치 ω_1, ω_2, ω_3 = 0인 곡선(분산이 발산하는 곳)이고, 음수 가중치 영역은 흐리게 칠한다.
-    후보가 정확히 같은 값으로 겹친 점(라벨에 "/")은 빨간 원, 분산 최소 격자점은 자홍색 별이다.
+    후보가 정확히 같은 값으로 겹친 점(라벨에 "/")은 빨간 원, 분산 최소 격자점은 검은 테두리의 자홍색 점이다.
     histories(탐색 경로)는 검은 선이며, show_histories는 처음 상태이고 "history" 체크박스로 켜고 끈다.
+    show_boundaries=True이면 최댓값 후보가 바뀌는 경계(분산이 미분 불가능할 수 있는 곳)를 흰 선으로 그린다.
+    near_zero가 있으면 양수 가중치이고 분산이 near_zero보다 작은 격자점을 자홍색 점으로 표시한다.
+    curve가 있으면 (a, b) 점 목록(예: zero_variance_curve의 분산 0 곡선)을 검은 선으로 겹쳐 그린다.
     반환값은 (figure, axes)이고, 체크박스는 가비지 컬렉션되지 않도록 figure에 붙여 둔다.
     """
     import matplotlib.pyplot as plt
     from matplotlib.colors import ListedColormap
     from matplotlib.patches import Patch
 
-    ids, names = load_active_plane(N, n=n)
-    V, positive = load_variance_plane(N, n=n)
+    ids, names = load_active_plane(N, n=n, cache_dir=cache_dir)
+    V, positive = load_variance_plane(N, n=n, cache_dir=cache_dir)
     weights = np.full((N + 1, N + 1, n), np.nan)
-    for i in range(1, N - 1):
-        with np.load(volume_slab_path(n, N, i)) as data:
-            weights[i, i + 1:N] = data['weights']
+    for i in plane_rows(N, n, cache_dir):
+        with np.load(volume_slab_path(cache_dir, n, N, i)) as data:
+            weights[i, i + 1:i + 1 + len(data['weights'])] = data['weights']
 
     order = sorted(range(len(names)), key=lambda k: -(ids == k).sum())
     rank = np.full(len(names), -1)
@@ -731,9 +777,22 @@ def draw_active_regions(N, *, n=6, histories=None, show_histories=True):
     tie_i, tie_j = np.nonzero((ids >= 0) & ties[np.maximum(ids, 0)])
     if len(tie_i):
         ax.scatter(tie_i / N, tie_j / N, s=60, facecolors="none", edgecolors="red", linewidths=1.2, zorder=5)
+    if show_boundaries:
+        segments = boundary_segments(ids, N)
+        if segments:
+            from matplotlib.collections import LineCollection
+            ax.add_collection(LineCollection(segments, colors="white", linewidths=0.9, zorder=4))
+    near = np.zeros_like(positive)
+    if near_zero is not None:
+        near = positive & np.isfinite(V) & (V < near_zero)
+        near_i, near_j = np.nonzero(near)
+        ax.scatter(near_i / N, near_j / N, s=4, color="magenta", linewidths=0, zorder=5)
+    if curve is not None and len(curve):
+        curve = np.asarray(curve, dtype=float)
+        ax.plot(curve[:, 0], curve[:, 1], color="black", linewidth=1.0, zorder=6)
     P = np.where(positive & np.isfinite(V) & (V > 0), V, np.inf)
     best = np.unravel_index(np.argmin(P), P.shape)
-    ax.scatter([best[0] / N], [best[1] / N], marker="*", s=120, color="magenta", edgecolors="black",
+    ax.scatter([best[0] / N], [best[1] / N], marker="o", s=12, color="magenta", edgecolors="black",
                linewidths=0.5, zorder=6)
     history_lines = []
     for index, (name, history) in enumerate((histories or {}).items()):
@@ -750,7 +809,17 @@ def draw_active_regions(N, *, n=6, histories=None, show_histories=True):
                 for k, style in zip(range((n + 1) // 2), ("-", "--", "-.", ":"))]
     handles += [plt.Line2D([], [], marker="o", markerfacecolor="none", markeredgecolor="red", linestyle="",
                            label=f"exact tie ({len(tie_i)})"),
-                plt.Line2D([], [], marker="*", color="magenta", linestyle="", markersize=10, label="min variance")]
+                plt.Line2D([], [], marker="o", color="magenta", markeredgecolor="black", linestyle="", markersize=4,
+                           label="min variance")]
+    if show_boundaries:
+        from matplotlib import patheffects
+        handles.append(plt.Line2D([], [], color="white", linewidth=1.5, label="argmax changes (maybe not differentiable)",
+                                  path_effects=[patheffects.withStroke(linewidth=3, foreground="0.4")]))
+    if near_zero is not None:
+        handles.append(plt.Line2D([], [], marker="o", color="magenta", linestyle="", markersize=3,
+                                  label=f"variance < {near_zero:g} ({int(near.sum()):,})"))
+    if curve is not None and len(curve):
+        handles.append(plt.Line2D([], [], color="black", linewidth=1.0, label=f"variance = 0 curve ({len(curve)})"))
     ax.legend(handles=handles, loc="upper left", bbox_to_anchor=(1.02, 1), fontsize=8,
               title=f"argmax of (F_1, ..., F_{n - 1})", title_fontsize=9)
     ax.set_xlim(0, 1)
@@ -758,18 +827,37 @@ def draw_active_regions(N, *, n=6, histories=None, show_histories=True):
     ax.set_xlabel("a")
     ax.set_ylabel("b")
     ax.set_title(f"n={n}, grid 1/{N}: active candidates (faded = negative weight)")
+    if show_boundaries:
+        ax.set_facecolor("0.85")  # 흰 경계선이 흰 배경(정의되지 않은 영역)과 구별되도록
     return fig, ax
 
 
-def draw_variance_plane(N, *, n=6, histories=None, max_mesh=100, zoom_limit=50,
+def boundary_segments(ids, N):
+    """이웃한 두 격자점의 라벨(최댓값 후보)이 다르면 그 사이의 칸 경계를 선분으로 돌려준다."""
+    half = 0.5 / N
+    segments = []
+    for axis in (0, 1):
+        first = ids[:-1, :] if axis == 0 else ids[:, :-1]
+        second = ids[1:, :] if axis == 0 else ids[:, 1:]
+        for p, q in zip(*np.nonzero((first != second) & (first >= 0) & (second >= 0))):
+            a0, b0 = p / N, q / N
+            if axis == 0:   # (p, q)와 (p+1, q) 사이: a = (p + 1/2)/N에 세로 선분
+                segments.append([(a0 + half, b0 - half), (a0 + half, b0 + half)])
+            else:           # (p, q)와 (p, q+1) 사이: b = (q + 1/2)/N에 가로 선분
+                segments.append([(a0 - half, b0 + half), (a0 + half, b0 + half)])
+    return segments
+
+
+def draw_variance_plane(N, *, n=6, cache_dir, histories=None, max_mesh=100, zoom_limit=50,
                         color_max=0.0, red_at=4.0, elev=25, azim=-130, show_boundaries=True,
-                        show_histories=True):
+                        show_histories=True, negative_color="black", near_zero=None):
     """간격 1/N 격자의 log10(분산) 곡면을 그리고, zoom 슬라이더로 최솟값 근처를 확대한다.
 
     회전이 느려지지 않도록 화면 안의 격자를 최대 max_mesh x max_mesh로 솎아 그리며,
     확대할수록 솎는 간격이 줄어 원래 1/N 격자가 그대로 보인다.
-    색은 log10(분산) 값으로만 정해진다. 음수 가중치 점은 작은 검은 점,
-    양수 가중치 점들 사이의 격자 국소 최솟값은 자홍색 별로 표시한다.
+    색은 log10(분산) 값으로만 정해진다. 음수 가중치 점은 작은 점(색은 negative_color),
+    near_zero가 있으면 양수 가중치이고 분산이 near_zero보다 작은 점은 자홍색 점,
+    양수 가중치 점들 사이의 격자 국소 최솟값은 작은 자홍색 점으로 표시한다.
     active_plane 결과가 있으면, 최댓값 후보가 바뀌는 경계(분산이 미분 불가능할 수 있는 곳)를 흰 선으로 그린다.
     show_boundaries는 처음 상태이고, 그림 오른쪽 위의 "boundaries" 체크박스로 실행 중에 켜고 끌 수 있다.
     histories는 {이름: compass_search의 반환값}이며, 경로마다 다른 색의 가는 선으로 표시한다.
@@ -783,8 +871,9 @@ def draw_variance_plane(N, *, n=6, histories=None, max_mesh=100, zoom_limit=50,
 
     from mpl_toolkits.mplot3d.art3d import Line3DCollection
 
-    V, positive = load_variance_plane(N, n=n)
-    ids = load_active_plane(N, n=n)[0] if active_row_path(n, N, 1).exists() else None
+    V, positive = load_variance_plane(N, n=n, cache_dir=cache_dir)
+    ids = (load_active_plane(N, n=n, cache_dir=cache_dir)[0]
+           if active_row_path(cache_dir, n, N, 1).exists() else None)
     defined = np.isfinite(V) & (V > 0)
     L = np.full_like(V, np.nan)
     L[defined] = np.log10(V[defined])
@@ -817,7 +906,7 @@ def draw_variance_plane(N, *, n=6, histories=None, max_mesh=100, zoom_limit=50,
                  label="log10(variance)")
 
     i, j = np.nonzero(is_minimum)
-    ax.scatter(i / N, j / N, L[i, j], marker="*", color="magenta", s=40, depthshade=False,
+    ax.scatter(i / N, j / N, L[i, j], marker="o", color="magenta", s=4, linewidths=0, depthshade=False,
                zorder=5, axlim_clip=True, label=f"grid local min ({len(i)})")
     history_lines = []
     for index, (name, history) in enumerate((histories or {}).items()):
@@ -853,8 +942,15 @@ def draw_variance_plane(N, *, n=6, histories=None, max_mesh=100, zoom_limit=50,
         thin[::dots, ::dots] = True
         negative &= thin
         if negative.any():
-            drawn.append(ax.scatter(A[negative], B[negative], window[negative], color="black", s=1,
+            drawn.append(ax.scatter(A[negative], B[negative], window[negative], color=negative_color,
+                                    s=1 if negative_color == "black" else 3,
                                     linewidths=0, depthshade=False, zorder=2, axlim_clip=True))
+        if near_zero is not None:
+            near = (np.isfinite(window) & positive[np.ix_(rows, cols)]
+                    & (window < np.log10(near_zero)))
+            if near.any():
+                drawn.append(ax.scatter(A[near], B[near], window[near], color="magenta", s=4,
+                                        linewidths=0, depthshade=False, zorder=4, axlim_clip=True))
         if boundaries['on']:
             # 이웃한 두 격자점의 최댓값 후보가 다르면 그 사이에 짧은 선분을 곡면 높이로 그린다.
             label = ids[np.ix_(rows, cols)]

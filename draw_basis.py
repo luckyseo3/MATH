@@ -17,7 +17,7 @@ def draw_adjustable_basis(nodes, parameters, *, ax=None):
     반환값은 (figure, axes, sliders)이며 sliders는 심볼을 키로 갖는다.
     """
     import matplotlib.pyplot as plt
-    import basis_sympy
+    import construct_basis_sympy
 
     nodes = [sp.sympify(node) for node in nodes]
     parameters = dict(parameters)
@@ -29,7 +29,7 @@ def draw_adjustable_basis(nodes, parameters, *, ax=None):
     for scope in parameters.values():
         if len(scope) != 4 or not (scope[0] < scope[1] and scope[0] <= scope[2] <= scope[1] and scope[3] > 0):
             raise ValueError('Each parameter needs (min, max, initial, positive step).')
-    basis = basis_sympy.get_New_Basis(nodes, basis_name='adjustable')
+    basis = construct_basis_sympy.get_New_Basis(nodes, basis_name='adjustable')
     functions = [sp.lambdify((x, *symbols), f, 'numpy') for f in basis]
     node_functions = [sp.lambdify(symbols, node, 'numpy') for node in nodes]
     t = np.linspace(-1, 1, 1000)
@@ -273,7 +273,7 @@ def draw_basis_selector(sources, n_initial=4, n_min=2, n_max=12, initial_basis=N
     from functools import lru_cache
     from matplotlib.widgets import RadioButtons
     import matplotlib.pyplot as plt
-    import basis_sympy as basis_generator
+    import construct_basis_sympy as basis_generator
     import nodes as node_generators
 
     if not isinstance(sources, dict) or not sources:
@@ -310,7 +310,8 @@ def draw_basis_selector(sources, n_initial=4, n_min=2, n_max=12, initial_basis=N
     normalized = {}
     for name, source in sources.items():
         if callable(source):
-            if not any(source is function for function in registered):
+            # functools.partial(nodes.ESC_nodes, endpoint_variable=a)처럼 인자를 고정한 함수도 받는다.
+            if not any(getattr(source, 'func', source) is function for function in registered):
                 raise ValueError(f"{name}: use a function defined in nodes.py.")
             normalized[name] = source
         else:
@@ -537,7 +538,7 @@ def draw_generalized_lebesgue_function_selector(sources, n_initial=4, n_min=2, n
     """체크박스로 여러 기저의 일반화 르베그 함수를 비교하고 좌우 키로 n을 조절한다."""
     from functools import lru_cache
     import matplotlib.pyplot as plt
-    import basis_sympy as basis_generator
+    import construct_basis_sympy as basis_generator
     from generalized_lebegue_constant import generalized_Lebegue_function
 
     if not isinstance(sources, dict) or not sources or any(

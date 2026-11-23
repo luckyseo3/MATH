@@ -1,8 +1,31 @@
+import functools
+from fractions import Fraction
+
 import numpy as np
 import sympy as sp
 
 # 모든 함수는 "차수 n" 입력, "nodes 배열" 반환을 규칙으로 한다.
+# 모든 함수는 키워드 인자 endpoint_variable(a, 기본값 1)을 받는다. a = 1일 때의 노드를 a배 해서
+# 양 끝 노드를 ±1 대신 ±a로 맞춘다. a = 1이면 원래 함수의 결과를 그대로 반환한다.
 
+
+def scaled_by_endpoint_variable(function):
+    """노드 생성 함수에 endpoint_variable 인자를 붙인다. Fraction 노드는 정확히, float 노드는 float로 곱한다."""
+    @functools.wraps(function)
+    def wrapper(n, *args, endpoint_variable=1, **kwargs):
+        nodes = function(n, *args, **kwargs)
+        a = Fraction(endpoint_variable)
+        if not 0 < a <= 1:
+            raise ValueError("endpoint_variable must satisfy 0 < a <= 1.")
+        if a == 1 or nodes is False:
+            return nodes
+        array = np.asarray(nodes)
+        if array.dtype == object:
+            return np.array([Fraction(v) * a for v in array], dtype=object)
+        return array * float(a)
+    return wrapper
+
+@scaled_by_endpoint_variable
 def GLo_nodes(n):
     # P'(n)의 근의 배열을 만둚
     interior_nodes = np.polynomial.legendre.Legendre.basis(n-1).deriv().roots()
@@ -10,6 +33,7 @@ def GLo_nodes(n):
     nodes = np.concatenate(([-1.0], interior_nodes, [1.0]))
     return nodes
     
+@scaled_by_endpoint_variable
 def uniform_nodes(n):
     """[-1, 1]에 등간격 노드 n개를 생성한다(간격은 2/(n-1)).
 
@@ -24,10 +48,12 @@ def uniform_nodes(n):
     return np.linspace(-1.0, 1.0, n)
 
 
+@scaled_by_endpoint_variable
 def GL_nodes(n):
     nodes, _ = np.polynomial.legendre.leggauss(n)
     return nodes
 
+@scaled_by_endpoint_variable
 def Chebyshev_nodes(n): # 2종 체비셰프 노드를 만드는 함수
     if n <= 0:
         return np.array([])
@@ -38,6 +64,7 @@ def Chebyshev_nodes(n): # 2종 체비셰프 노드를 만드는 함수
     nodes = np.cos(np.pi * indices / (n - 1))
     return nodes[::-1]
 
+@scaled_by_endpoint_variable
 def ESC_nodes(n, *, dps=None): # 1종 체비셰프 노드를 스케일링한 함수
     # 정확 계산용: float를 거치지 않고 고정밀 십진 문자열로 반환한다.
     if dps is not None:
@@ -65,6 +92,7 @@ def ESC_nodes(n, *, dps=None): # 1종 체비셰프 노드를 스케일링한 함
     right_end = np.cos(np.pi / (2 * n))
     return (nodes / right_end)[::-1]
 
+@scaled_by_endpoint_variable
 def Chebyshev_1st_nodes(n): # 1종 체비셰프 노드 함수
     if n <= 0:
         return np.array([])
@@ -76,6 +104,7 @@ def Chebyshev_1st_nodes(n): # 1종 체비셰프 노드 함수
     # right_end = np.cos(np.pi / (2 * n))
     return (nodes)[::-1]
 
+@scaled_by_endpoint_variable
 def ESCLo_nodes(n):
     """2종 노드 n+2개에서 양 끝점을 제거하고 확대해 n개 노드를 반환한다.
 
@@ -93,6 +122,7 @@ def ESCLo_nodes(n):
     return interior_nodes / interior_nodes[-1]
 
 
+@scaled_by_endpoint_variable
 def crossing_legendre(n):
     if n%2 == 0:
         return False
@@ -114,6 +144,7 @@ def crossing_legendre(n):
     return cross_nodes
 
 
+@scaled_by_endpoint_variable
 def precise_GL_nodes(n):
     """GL 노드를 40자리 십진수에서 Fraction으로 변환한다."""
     from mpmath import mp
@@ -124,6 +155,7 @@ def precise_GL_nodes(n):
                          else Fraction(0) for i, v in enumerate(values)], dtype=object)
 
 
+@scaled_by_endpoint_variable
 def precise_GLo_nodes(n):
     from mpmath import mp
     from fractions import Fraction
@@ -140,6 +172,7 @@ def precise_GLo_nodes(n):
         return np.array(values, dtype=object)
 
 
+@scaled_by_endpoint_variable
 def precise_uniform_nodes(n):
     from fractions import Fraction
     if n <= 0:
@@ -148,6 +181,7 @@ def precise_uniform_nodes(n):
                     [Fraction(2 * i, n - 1) - 1 for i in range(n)], dtype=object)
 
 
+@scaled_by_endpoint_variable
 def precise_Chebyshev_nodes(n):
     from mpmath import mp
     from fractions import Fraction
@@ -162,6 +196,7 @@ def precise_Chebyshev_nodes(n):
         return np.array(values, dtype=object)
 
 
+@scaled_by_endpoint_variable
 def precise_ESCLo_nodes(n):
     from mpmath import mp
     from fractions import Fraction

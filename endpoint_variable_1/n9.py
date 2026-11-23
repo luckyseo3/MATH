@@ -1,12 +1,16 @@
+import sys, pathlib; sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))  # 공통 모듈
+from fractions import Fraction
+ENDPOINT_VARIABLE = Fraction(1)  # 끝 노드 a: 노드의 양 끝은 ±a
+VARIANCE_CACHE = pathlib.Path(__file__).resolve().parent / 'variance_cache'  # 이 a로 구한 결과
 import numpy as np
 from fractions import Fraction
 import matplotlib.pyplot as plt
 import sympy as sp
 
 import nodes
-import basis_sympy as basis
+import construct_basis_sympy as basis
 import draw_basis as draw
-import maximum
+import calculate_maximum
 import draw_variance as variance_plot
 
 # 격자 간격은 1/GRID_N이다.
@@ -62,10 +66,10 @@ if __name__ == "__main__":
     # 3️⃣ 노드 (-1, -c, -b, -a, 0, a, b, c, 1)에서 a, b, c에 따른 내부 F_1~F_8 최댓값 분산
     # 유리수 격자점에서 Fraction으로 오차 없이 계산하며, 분산이 작을수록 점이 크다.
     # 결과는 variance_cache/n9/N{GRID_N}/에 저장되어 중단해도 이어서 계산한다.
-    variance_plot.variance_volume(GRID_N, n=9)
+    variance_plot.variance_volume(GRID_N, n=9, endpoint_variable=ENDPOINT_VARIABLE, cache_dir=VARIANCE_CACHE)
     # 탐색 경로를 그리려면 histories={이름: compass_search_ver3의 반환값}을 넘긴다.
     # 그러면 "history" 체크박스가 생기고, show_histories=False로 처음에 숨길 수 있다.
-    fig_variance, ax_variance, variance_sliders = variance_plot.draw_variance_volume(GRID_N, n=9)
+    fig_variance, ax_variance, variance_sliders = variance_plot.draw_variance_volume(GRID_N, n=9, cache_dir=VARIANCE_CACHE)
 
     # initial_node = nodes.ESC_nodes(8, dps=40)
     # history = compass_search.compass_search_ver3(8, 0.01, 1e-6, initial_node.tolist())

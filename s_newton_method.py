@@ -1,19 +1,21 @@
-import basis_fraction
-import basis_mpmath
-import maximum
+import construct_basis_fraction
+import construct_basis_mpmath
+import calculate_maximum
+import calculate_variance
 from fractions import Fraction
 
-# node 리스트를 입력하면 variable 리스트로 반환
+# node 리스트를 입력하면 variable 리스트로 반환 (양 끝 노드 ±a는 자유변수가 아니다)
 def node_to_variable(node):
     n = len(node)
     return node[(n+1)//2 : -1]
 
-# variable 리스트를 입력하면 node 리스트로 반환
-def variable_to_node(variables, n):
+# variable 리스트를 입력하면 node 리스트로 반환. 양 끝 노드는 ±endpoint_variable(a)이다.
+def variable_to_node(variables, n, endpoint_variable=1):
+    a = Fraction(endpoint_variable)
     right = [Fraction(v) for v in variables]
     left = [-v for v in reversed(right)]
     middle = [Fraction(0)] if n%2 else []
-    return [Fraction(-1)] + left + middle + right + [Fraction(1)]
+    return [-a] + left + middle + right + [a]
 
 # 주어진 node에서 i번째 free variable을 h만큼 움직임
 def move_ith_variable(node, i, h):
@@ -33,7 +35,7 @@ def move_ith_variable(node, i, h):
     if value_after_move <= 0                   : raise ValueError("under 0")
     if node[right + i + 1] <= value_after_move : raise ValueError("break the order")
     if value_after_move <= node[right + i - 1] : raise ValueError("break the order")
-    if 1 <= value_after_move                   : raise ValueError("over 1")
+    if node[-1] <= value_after_move            : raise ValueError("over a")
 
     node[right + i] = value_after_move
     node[left - i] = -value_after_move
@@ -70,7 +72,7 @@ def in_T_plus(node):
     if not all(a < b for a, b in zip(node, node[1:])):
         return None, "order"
     try:
-        M, w, labels = maximum.exact_maximums_and_weights(node, active=True)
+        M, w, labels = calculate_maximum.exact_maximums_and_weights(node, active=True)
     except (ValueError, ZeroDivisionError):
         return None, "weight = 0"
     if min(w) <= 0:
@@ -112,7 +114,7 @@ def integral_polynomial(p):
 #   A(t) = ∫_{-1}^t C_jk,  B(t) = ∫_{-1}^t s C_jk,  A = A(1),  B = B(1)
 # (k = j이면 L~_j가 τ_j에 무관하므로 Φ_jj = 0이다.)
 def Phi(L_j, tau_j, tau_k, points):
-    value_at = basis_mpmath.value_at
+    value_at = construct_basis_mpmath.value_at
     C = C_polynomial(L_j, tau_j, tau_k)
     sC = [C[0] * 0] + C               # s · C_jk(s)
     IA = integral_polynomial(C)
@@ -131,7 +133,7 @@ def Phi(L_j, tau_j, tau_k, points):
     return values
 
 # 해석적 J (mp.workdps(dps) 안에서 호출). J[r, x] = ∂f_r/∂x_x,  f_r = M_1 - M_{r+2}  (r, x = 0, ..., cnt_x-1)
-# tau: mpf 노드, L, w: tau의 Lagrange 기저와 가중치 (basis_mpmath)
+# tau: mpf 노드, L, w: tau의 Lagrange 기저와 가중치 (construct_basis_mpmath)
 #
 # 1. 포락선 정리: ∂M_i/∂τ_k = ∂F_i/∂τ_k (t*_i)  (t*_i는 미분하지 않는다)
 # 2. Python 인덱스에서 F_i = G_i - G_{i+1}은 L~_{i-1} - L~_i를 적분한 것이므로
@@ -149,7 +151,7 @@ def analytic_jacobian(tau, L, w):
         right = n // 2 + 1
         left = right - 2
 
-    # 대칭이므로 서로 다른 내부 최댓값 M_1, ..., M_{cnt_x+1}의 t*만 필요하다. (maximum.py와 같은 식)
+    # 대칭이므로 서로 다른 내부 최댓값 M_1, ..., M_{cnt_x+1}의 t*만 필요하다. (calculate_maximum.py와 같은 식)
     star = {}
     for i in range(1, cnt_x + 2):
         alpha = w[i] * L[i-1][-1]
@@ -189,8 +191,8 @@ def finite_difference_jacobian(node, dps):
     for i in range(cnt_x):
         node_plus = move_ith_variable(node, i, h)
         node_minus = move_ith_variable(node, i, -h)
-        M_plus = maximum.precise_maximums_and_weights(node_plus, dps)[0]
-        M_minus = maximum.precise_maximums_and_weights(node_minus, dps)[0]
+        M_plus = calculate_maximum.precise_maximums_and_weights(node_plus, dps)[0]
+        M_minus = calculate_maximum.precise_maximums_and_weights(node_minus, dps)[0]
 
         # f_j = M_1 - M_{j+2} (j = 0, ..., cnt_x-1)이므로 J[j, i] = ∂f_j/∂x_i
         for j in range(cnt_x):
@@ -224,12 +226,12 @@ def gauss_newton(
     if M is None:
         raise ValueError(f"initial node is not in T+ ({reason})")
     # 분산은 약분하지 않은 (분자, 분모) 튜플로 다루고 교차곱으로 비교한다 (Fraction 약분 비용을 피한다).
-    var = maximum.exact_variance(M[1:-1], gcd=False)
+    var = calculate_variance.exact_variance(M[1:-1], gcd=False)
     tolerance = Fraction(variance_tolerance)
     tolerance = (tolerance.numerator, tolerance.denominator)
 
     # compass_search와 같은 형식: history[0][k], history[1][k]는 k번째 반복 후의 노드와 분산 (k = 0은 시작점)
-    # 분산은 float로 기록한다. 정확한 값이 필요하면 노드에서 maximum.exact_variance로 다시 구한다.
+    # 분산은 float로 기록한다. 정확한 값이 필요하면 노드에서 calculate_variance.exact_variance로 다시 구한다.
     node_history = [node]
     variance_history = [ratio_to_float(var)]
     history = [node_history, variance_history]
@@ -241,8 +243,8 @@ def gauss_newton(
             # 1.1. J 구하기
             # 1.1.1. 현재 node의 L, w (mpmath, 반복마다 한 번: O(n^3))
             tau = [mp.mpf(v.numerator) / v.denominator for v in node]
-            L = basis_mpmath.lagrange_basis(tau)
-            w = basis_mpmath.weights(L)
+            L = construct_basis_mpmath.lagrange_basis(tau)
+            w = construct_basis_mpmath.weights(L)
 
             # 1.1.2. 해석적 J: O(n^3)  (검증할 때는 finite_difference_jacobian(node, dps)와 비교)
             J = analytic_jacobian(tau, L, w)
@@ -265,13 +267,13 @@ def gauss_newton(
         while True:
             # 반올림하지 않으면 노드의 분모가 반복마다 커져 계산이 끝나지 않는다.
             X_new = [Fraction(round((x - lam * p) * 10**digits), 10**digits) for x, p in zip(X, P)]
-            node_new = variable_to_node(X_new, n)
+            node_new = variable_to_node(X_new, n, node[-1])
 
             # 3. X_{n+1} 검사 : 변화한 자유변수 노드가 T+에 속하는지 확인
             M_new, reason = in_T_plus(node_new)
             if M_new is not None:
                 # 4. Var(X_{n+1})
-                var_new = maximum.exact_variance(M_new[1:-1], gcd=False)
+                var_new = calculate_variance.exact_variance(M_new[1:-1], gcd=False)
                 if ratio_less(var_new, var):
                     break
                 reason = "variance did not decrease"

@@ -1,12 +1,17 @@
+import sys, pathlib; sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))  # 공통 모듈
+from fractions import Fraction
+ENDPOINT_VARIABLE = Fraction(1)  # 끝 노드 a: 노드의 양 끝은 ±a
+VARIANCE_CACHE = pathlib.Path(__file__).resolve().parent / 'variance_cache'  # 이 a로 구한 결과
 import numpy as np
 from fractions import Fraction
 import matplotlib.pyplot as plt
 import sympy as sp
 
 import nodes
-import basis_sympy as basis
+import construct_basis_sympy as basis
 import draw_basis as draw
-import maximum
+import calculate_maximum
+import calculate_variance
 import s_compass_search as compass_search
 import draw_variance as variance_plot
 
@@ -57,7 +62,7 @@ if __name__ == "__main__":
     # 5️⃣ 4개 노드 (-1, -a, a, 1)에서 a에 따른 내부 F_1~F_3 최댓값 분산
     # 결과는 variance_cache/n4/variance.json에 저장되어 같은 점은 다시 계산하지 않는다.
     variance_a_values = [sp.Rational(k, 1000) for k in range(1, 1000)]   # 0.001 ~ 0.999
-    var_inner = variance_plot.variance_curve(variance_a_values, n=4)
+    var_inner = variance_plot.variance_curve(variance_a_values, n=4, endpoint_variable=ENDPOINT_VARIABLE, cache_dir=VARIANCE_CACHE)
 
     ##################################################################################################################
     # 6️⃣ 끝점을 포함하는 노드들에서 시작해 분산을 줄이는 compass search
@@ -77,13 +82,13 @@ if __name__ == "__main__":
             print(f"{step:>4} {float(step_h):>20.15f} {float(value):>20.15e}  [{node_text}]")
 
         # 탐색은 mpmath로 하고 최종 노드만 Fraction 정확값으로 다시 확인한다.
-        exact_maxima, _ = maximum.exact_maximums_and_weights(node_history[-1])
-        exact_variance = maximum.exact_variance(exact_maxima[1:-1])
+        exact_maxima, _ = calculate_maximum.exact_maximums_and_weights(node_history[-1])
+        exact_variance = calculate_variance.exact_variance(exact_maxima[1:-1])
         print(f"[{name}] a={float(node_history[-1][-2]):.8f}, exact check: {float(exact_variance):.15e}")
 
     # 분산 곡선 위에 탐색 경로들을 색깔별로 표시한다.
     fig_variance, ax_variance = variance_plot.draw_variance_curve(
-        variance_a_values, var_inner, n=4, histories=histories
+        variance_a_values, var_inner, n=4, endpoint_variable=ENDPOINT_VARIABLE, histories=histories
     )
 
     plt.show()
