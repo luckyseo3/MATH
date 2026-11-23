@@ -190,7 +190,7 @@
       <button class="pill-btn" type="button" id="theme-btn">테마</button>
     </div>
   </div>
-  <ol class="toc"><li class="toc-part"><a href="#s1">Critical Point Problem</a></li><li><a href="#s2">Definitions</a></li><li><a href="#s3">Critical points of $F_i^n(t)$ with the ordered nodes $\{\tau_1,\tau_2,\dots,\tau_n\}$</a></li><li><a href="#s6">Special cases of $t^*$</a></li><li><a href="#s9">Sign of $\frac{d^2}{dt^2}F_i^n(\tau_k)$, $k\ne i$, $k\ne i+1$</a></li><li><a href="#s11">Position of $t^*$</a></li><li><a href="#s12">New notation of $t^*$</a></li><li><a href="#s13">$t^*$ is the local maximizer</a></li><li><a href="#s14">$t^*$ is not necessarily a global maximizer</a></li><li class="toc-part"><a href="#s15">Minimize Variance Problem</a></li><li><a href="#s16">Minimizing the variance of the maxima of F</a></li><li><a href="#s17">Definitions</a></li><li><a href="#s18">탐색 방법</a></li><li><a href="#s19">Compass Search</a></li><li><a href="#s20">ver1의 한계와 개선</a></li><li><a href="#s21">n = 10 ~ 15 결과 (ver3, 2026-11-14)</a></li><li><a href="#s22">아이디어</a></li><li><a href="#s23">+a</a></li></ol>
+  <ol class="toc"><li class="toc-part"><a href="#s1">Critical Point Problem</a></li><li><a href="#s2">Definitions</a></li><li><a href="#s3">Critical points of $F_i^n(t)$ with the ordered nodes $\{\tau_1,\tau_2,\dots,\tau_n\}$</a></li><li><a href="#s6">Special cases of $t^*$</a></li><li><a href="#s9">Sign of $\frac{d^2}{dt^2}F_i^n(\tau_k)$, $k\ne i$, $k\ne i+1$</a></li><li><a href="#s11">Position of $t^*$</a></li><li><a href="#s12">New notation of $t^*$</a></li><li><a href="#s13">$t^*$ is the local maximizer</a></li><li><a href="#s14">$t^*$ is not necessarily a global maximizer</a></li><li class="toc-part"><a href="#s15">Minimize Variance Problem</a></li><li><a href="#s16">Minimizing the variance of the maxima of F</a></li><li><a href="#s17">Definitions</a></li><li><a href="#s18">탐색 방법</a></li><li><a href="#s19">Compass Search</a></li><li><a href="#s20">ver1의 한계와 개선</a></li><li><a href="#s21">n = 10 ~ 15 결과 (ver3, 2026-11-14)</a></li><li><a href="#s22">아이디어</a></li><li><a href="#s23">Gradient 구하기</a></li><li><a href="#s36">+a</a></li></ol>
 </nav>
 <main><article>
 
@@ -895,7 +895,430 @@ sympy check: 1.591464508424902e-10</code></pre>
 </ul>
 </li>
 </ol>
-<h1 id="s23">+a</h1>
+<h1 id="s23">Gradient 구하기</h1>
+<p>For $k \neq i$ and $k \neq i+1 \\$ 
+$$ 
+\frac{\partial}{\partial\tau_k}Var(\tau_k) = \frac{\partial}{\partial\tau_k}\frac{1}{n-1}\sum_{i=1}^{n-1}(M_i^n - \bar{M})^2 \\ \qquad = \frac{2}{n-1}\sum_{i=1}^{n-1}(M_i^n - \bar{M}) \cdot \sum_{i=1}^{n-1}( \frac{\partial}{\partial\tau_k}M_i^n - \frac{\partial}{\partial\tau_k}\bar{M}) 
+$$</p>
+<p>$$ 
+\frac{\partial}{\partial\tau_k}M_i^n = \frac{\partial}{\partial\tau_k}F_i^n(t_i^*, \tau_k) = 
+$$</p>
+<h2 id="s24">$L_i^n(t,\tau_k)$</h2>
+<p>다른 노드는 고정하고 $\tau_k$에 대해 편미분한다. $k\ne i$에 대해
+$$
+C_{ik}^n(t)=\prod_{\substack{j=1\\j\ne i,k}}^n\frac{t-\tau_j}{\tau_i-\tau_j}
+$$
+로 정의하면, $C_{ik}^n(t)$는 $\tau_k$에 무관하다. 따라서
+$$
+L_i^n(t,\tau_k)
+=\prod_{\substack{j=1\\j\ne i}}^n\frac{t-\tau_j}{\tau_i-\tau_j}
+=C_{ik}^n(t)\cdot\frac{t-\tau_k}{\tau_i-\tau_k}.
+$$</p>
+<h2 id="s25">$\frac{\partial}{\partial\tau_k}L_i^n(t,\tau_k)$</h2>
+<p>$$
+\frac{\partial}{\partial\tau_k}L_i^n(t,\tau_k)
+=C_{ik}^n(t)\frac{t-\tau_i}{(\tau_i-\tau_k)^2}.
+$$</p>
+<h2 id="s26">$\omega_i^n(\tau_k)$</h2>
+<p>$$
+\begin{aligned}
+\omega_i^n(\tau_k)
+&amp;=\int_{-1}^1L_i^n(t,\tau_k)\,dt\\
+&amp;=\int_{-1}^1C_{ik}^n(t)\cdot\frac{t-\tau_k}{\tau_i-\tau_k}\,dt\\
+&amp;=\frac{1}{\tau_i-\tau_k}\left(\int_{-1}^1tC_{ik}^n(t)\,dt-\tau_k\int_{-1}^1C_{ik}^n(t)\,dt\right).
+\end{aligned}
+$$</p>
+<p>$n$의 짝홀만으로 $C_{ik}^n(t)$가 우함수 또는 기함수라고 할 수 없다. 노드가 원점에 대해 대칭이어도 $i,k$를 제외한 노드들은 일반적으로 대칭이 아니므로, 두 적분을 모두 유지한다.</p>
+<p>편의를 위해
+$$
+A_{ik}^n=\int_{-1}^1C_{ik}^n(t)\,dt,\qquad
+B_{ik}^n=\int_{-1}^1tC_{ik}^n(t)\,dt
+$$
+로 놓으면, $A_{ik}^n,B_{ik}^n$는 $\tau_k$에 무관하고
+$$
+\omega_i^n(\tau_k)=\frac{B_{ik}^n-\tau_k A_{ik}^n}{\tau_i-\tau_k}.
+$$</p>
+<h2 id="s27">$\frac{\partial}{\partial\tau_k}\omega_i^n(\tau_k)$</h2>
+<p>$$
+\begin{aligned}
+\frac{\partial}{\partial\tau_k}\omega_i^n(\tau_k)
+&amp;=\frac{-A_{ik}^n(\tau_i-\tau_k)+(B_{ik}^n-\tau_k A_{ik}^n)}{(\tau_i-\tau_k)^2}\\
+&amp;=\frac{B_{ik}^n-\tau_i A_{ik}^n}{(\tau_i-\tau_k)^2}\\
+&amp;=\frac{1}{(\tau_i-\tau_k)^2}\left(\int_{-1}^1tC_{ik}^n(t)\,dt-\tau_i\int_{-1}^1C_{ik}^n(t)\,dt\right).
+\end{aligned}
+$$</p>
+<h2 id="s28">$\tilde L_i^n(t,\tau_k)$</h2>
+<p>$$
+\begin{aligned}
+\tilde L_i^n(t,\tau_k)
+&amp;=\frac{L_i^n(t,\tau_k)}{\omega_i^n(\tau_k)}\\
+&amp;=\frac{C_{ik}^n(t)\cdot\frac{t-\tau_k}{\tau_i-\tau_k}}
+{\frac{B_{ik}^n-\tau_k A_{ik}^n}{\tau_i-\tau_k}}\\
+&amp;=\frac{C_{ik}^n(t)(t-\tau_k)}{B_{ik}^n-\tau_k A_{ik}^n}.
+\end{aligned}
+$$
+서로 다른 노드와 $\omega_i^n\ne0$ 가정에 의해 $B_{ik}^n-\tau_k A_{ik}^n\ne0$이다.</p>
+<h2 id="s29">$\frac{\partial}{\partial\tau_k}\tilde L_i^n(t,\tau_k)$</h2>
+<p>$$
+\begin{aligned}
+\frac{\partial}{\partial\tau_k}\tilde L_i^n(t,\tau_k)
+&amp;=C_{ik}^n(t)\frac{-(B_{ik}^n-\tau_k A_{ik}^n)+(t-\tau_k)A_{ik}^n}
+{(B_{ik}^n-\tau_k A_{ik}^n)^2}\\
+&amp;=\frac{C_{ik}^n(t)(tA_{ik}^n-B_{ik}^n)}{(B_{ik}^n-\tau_k A_{ik}^n)^2}.
+\end{aligned}
+$$
+위 식들은 $n$의 짝홀 구분 없이 성립하며, $k\ne i$를 전제로 한다. $F_i^n$의 두 항에 모두 적용할 때는 $k\ne i,i+1$이어야 한다.</p>
+<h2 id="s30">$k = i$인 경우</h2>
+<p>$\tau_i$는 $L_i^n$의 분모 $\prod_{q\ne i}(\tau_i-\tau_q)$, 즉 상수 배에만 들어 있고, $\tilde L_i^n = L_i^n/\omega_i^n$으로 정규화하면 그 상수 배가 약분된다. 따라서 $\tilde L_i^n$은 $\tau_i$에 무관하고
+$$
+\frac{\partial}{\partial\tau_i}\tilde L_i^n(t) = 0.
+$$</p>
+<h2 id="s31">포락선 정리: $\frac{\partial}{\partial\tau_k}M_i^n$</h2>
+<p>$T^+$에서 $M_i^n = F_i^n(t_i^*(\tau), \tau)$이므로 연쇄법칙에 의해
+$$
+\frac{\partial M_i^n}{\partial\tau_k}
+= \frac{\partial F_i^n}{\partial t}(t_i^*)\cdot\frac{\partial t_i^*}{\partial\tau_k}
++ \frac{\partial F_i^n}{\partial\tau_k}(t_i^*).
+$$
+$\frac{\partial F_i^n}{\partial t} = \tilde L_i^n - \tilde L_{i+1}^n$은 공통인수 $\prod_{j\ne i,i+1}(t-\tau_j)$와 1차식의 곱이고, 그 1차식의 근이 $t_i^*$이므로 $\frac{\partial F_i^n}{\partial t}(t_i^*) = 0$이다. 따라서 $t_i^*$가 움직이는 효과는 사라지고
+$$
+\frac{\partial M_i^n}{\partial\tau_k} = \frac{\partial F_i^n}{\partial\tau_k}(t_i^*).
+$$</p>
+<ul>
+<li>조건: $t_i^*$가 $(-1,1)$ 안의 유일한 최댓점이고(동점 없음), $t_i^*$가 $\tau$에 대해 미분 가능해야 한다. $T^+$에서는 모두 성립한다.</li>
+<li>확인 (n=7, ESC): $\frac{\partial t_i^*}{\partial\tau_k}$는 0.09 ~ 0.65로 0이 아니지만 $\frac{\partial F_i^n}{\partial t}(t_i^*) \approx 10^{-100}$ (100자리 계산의 반올림 수준)이라 첫째 항이 사라지고, $\frac{dM_i^n}{d\tau_k}$와 $\frac{\partial F_i^n}{\partial\tau_k}(t_i^*)$가 15자리까지 일치했다.</li>
+<li>음함수 정리로 $\frac{\partial t_i^*}{\partial\tau_k} = -\dfrac{\frac{\partial^2 F_i^n}{\partial\tau_k\partial t}(t_i^*)}{\frac{\partial^2 F_i^n}{\partial t^2}(t_i^*)}$을 구할 수 있지만 J에는 필요 없다.</li>
+</ul>
+<h2 id="s32">$\frac{\partial}{\partial\tau_k}F_i^n(t)$</h2>
+<p>$F_i^n = G_i^n - G_{i+1}^n$, $G_j^n(t)+\frac12 = \int_{-1}^t\tilde L_j^n(s)\,ds$이므로
+$$
+\frac{\partial M_i^n}{\partial\tau_k} = \Phi_{ik}(t_i^*) - \Phi_{i+1,k}(t_i^*),
+\qquad \Phi_{jk}(t) := \int_{-1}^{t}\frac{\partial \tilde L_j^n}{\partial\tau_k}(s)\,ds.
+$$
+위의 $\frac{\partial}{\partial\tau_k}\tilde L_j^n$을 적분하면
+$$
+\Phi_{jk}(t) =
+\begin{cases}
+\dfrac{A_{jk}^n\,B_{jk}^n(t) - B_{jk}^n\,A_{jk}^n(t)}{\left(B_{jk}^n - \tau_k A_{jk}^n\right)^2} &amp; k \ne j \\[2mm]
+0 &amp; k = j
+\end{cases}
+$$
+$$
+A_{jk}^n(t) = \int_{-1}^{t} C_{jk}^n(s)\,ds, \qquad
+B_{jk}^n(t) = \int_{-1}^{t} s\,C_{jk}^n(s)\,ds, \qquad
+A_{jk}^n = A_{jk}^n(1),\quad B_{jk}^n = B_{jk}^n(1).
+$$
+$B_{jk}^n - \tau_k A_{jk}^n = (\tau_j-\tau_k)\,\omega_j^n \ne 0$이다.
+$$
+t_i^* = \frac{\alpha\,\tau_{i+1} - \beta\,\tau_i}{\alpha - \beta}, \qquad
+\alpha = \frac{\omega_{i+1}^n}{D_i},\quad \beta = \frac{\omega_i^n}{D_{i+1}},\quad
+D_i = \prod_{q \ne i} (\tau_i - \tau_q)
+$$</p>
+<h2 id="s33">Newton의 야코비안 $J$</h2>
+<p>자유변수 $x_1,\dots,x_m$ $(m=\lfloor n/2\rfloor-1)$은 $\tau_{p(s)} = x_s$, $\tau_{q(s)} = -x_s$로 노드 두 개를 함께 움직인다. 방정식은 $f_r = M_1^n - M_{r+1}^n$ $(r=1,\dots,m)$이다.
+$$
+J_{rs} = \frac{\partial M_1^n}{\partial x_s} - \frac{\partial M_{r+1}^n}{\partial x_s},
+\qquad
+\frac{\partial M_i^n}{\partial x_s} = \frac{\partial M_i^n}{\partial \tau_{p(s)}} - \frac{\partial M_i^n}{\partial \tau_{q(s)}},
+\qquad p(s) = \left\lceil \tfrac{n}{2} \right\rceil + s,\quad q(s) = n+1-p(s)
+$$</p>
+<ul>
+<li>계산 순서: $(j,k)$ 쌍마다 다항식 $C_{jk}^n$, $sC_{jk}^n$을 만들고 $[-1,1]$과 $[-1,t^*]$에서 적분해 네 수 $A_{jk}^n, B_{jk}^n, A_{jk}^n(t^*), B_{jk}^n(t^*)$를 얻는다. $t^*$는 미분하지 않는다.</li>
+<li>확인: n = 6, 7, 10, 13에서 위 식과 중앙 차분 J의 차이가 $10^{-60}$ ~ $10^{-57}$ (중앙 차분 오차 수준).</li>
+</ul>
+<h2 id="s34">$J$를 구하는 비용: 해석적 $O(n^3)$, 중앙 차분 $O(n^4)$</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th>기본 단위</th>
+<th>단위 비용</th>
+<th>개수</th>
+<th>합계</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>해석적</td>
+<td>$\frac{\partial M_i^n}{\partial\tau_k}$ 하나 ($\Phi_{jk}(t^*)$)</td>
+<td>$O(n)$</td>
+<td>$O(n^2)$</td>
+<td>$O(n^3)$</td>
+</tr>
+<tr>
+<td>중앙 차분</td>
+<td>최댓값 전체를 다시 계산 (= $J$의 한 열)</td>
+<td>$O(n^3)$</td>
+<td>$O(n)$</td>
+<td>$O(n^4)$</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>해석적</strong></p>
+<ul>
+<li>$\Phi_{jk}(t^*)$ 하나에 $O(n)$: $C_{jk}^n$을 $L_j^n$의 $(t-\tau_k)$ 합성 나눗셈으로 만들면 $O(n)$, 적분과 $t^*$에서의 값도 $O(n)$이다. ($C_{jk}^n$을 일차식 $n$개의 곱으로 처음부터 만들면 $O(n^2)$이 되어 전체가 $O(n^4)$이 된다.)</li>
+<li>$(j,k)$ 쌍이 $O(n^2)$개이고, $J_{rs}$는 이 값들의 뺄셈이므로 $O(n^3)$.</li>
+<li>처음에 기저 $L^n$을 한 번 만드는 비용도 $O(n^3)$이라 전체 차수는 같다.</li>
+</ul>
+<p><strong>중앙 차분</strong></p>
+<ul>
+<li>노드를 $\pm h$ 움직여 최댓값을 다시 구하는 한 번이 $O(n^3)$이다.<ul>
+<li>Lagrange 기저: $n$개 × 일차식 $n$번 곱 × 길이 $n$ = $O(n^3)$</li>
+<li>최댓값: $F_i$ $(n+1)$개 × 후보점 약 $n$개 × Horner $O(n)$ = $O(n^3)$</li>
+</ul>
+</li>
+<li>이 한 번으로 $M_1,\dots,M_{n-1}$이 모두 나오므로 $J$의 한 열($s$ 고정, 모든 $r$)이 채워진다. 열 $m\approx n/2$개 × $\pm h$ 2번 → $O(n)\times O(n^3) = O(n^4)$.</li>
+<li>성분 하나당 평균은 $O(n^2)$이지만, $J_{rs}$마다 최댓값을 따로 구하는 것은 아니다.</li>
+</ul>
+<p><strong>실측</strong> (mpmath dps = 100, ESC 노드)</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>n</th>
+<th>해석적</th>
+<th>중앙 차분</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>15</td>
+<td>0.14초</td>
+<td>0.73초</td>
+</tr>
+<tr>
+<td>20</td>
+<td>0.46초</td>
+<td>3.6초</td>
+</tr>
+<tr>
+<td>25</td>
+<td>0.32초</td>
+<td>4.6초</td>
+</tr>
+<tr>
+<td>30</td>
+<td>0.68초</td>
+<td>8.8초</td>
+</tr>
+</tbody>
+</table></div>
+<ul>
+<li>n = 15 → 30에서 해석적은 약 5배($2^{2.3}$), 중앙 차분은 약 12배($2^{3.6}$)로, 이론값 8배와 16배보다 작다. n이 작을 때는 mpmath의 고정 비용이 커서 아직 점근적인 영역이 아니기 때문이다.</li>
+<li>n = 20의 값은 다른 계산과 동시에 돌린 측정이라 덜 정확하다.</li>
+</ul>
+<h2 id="s35">Gauss-Newton 실행 시간 개선 (2026-11-23)</h2>
+<p>해석적 $J$ → 분산에 공통분모 → <code>value_at</code>에 공통분모 순서로 고쳤다. 각 단계의 커밋을 그대로 꺼내 같은 조건으로 다시 돌렸다.</p>
+<ul>
+<li>조건: 시작점 ESC (float), 분산 허용값 $10^{-60}$, digits = 40, dps = 100, 한 번에 한 실행씩</li>
+<li>모든 단계에서 n마다 반복 횟수와 도착 노드가 완전히 같다. 바뀐 것은 계산 방법뿐이고 결과는 같다.</li>
+</ul>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>단계</th>
+<th>커밋</th>
+<th>바꾼 것</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td><code>c88d9ad</code></td>
+<td>출발점: 중앙 차분 $J$, 분산은 <code>Fraction</code>으로 평균과 편차 제곱합</td>
+</tr>
+<tr>
+<td>1</td>
+<td><code>062b9b8</code></td>
+<td>해석적 $J$ (<code>analytic_jacobian</code>)</td>
+</tr>
+<tr>
+<td>2a</td>
+<td><code>f2665e5</code></td>
+<td><code>exact_variance</code>: 공통분모 $n\cdot\mathrm{lcm}(\text{분모})$ 위에서 정수 연산, 마지막에 한 번 약분</td>
+</tr>
+<tr>
+<td>2b</td>
+<td><code>a3bea02</code></td>
+<td><code>exact_variance(..., gcd=False)</code>: 마지막 약분도 생략, (분자, 분모)를 교차곱으로 비교</td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>9018963</code></td>
+<td><code>value_at</code>: 계수를 lcm 공통분모 위의 정수로 바꿔 정수 Horner, 마지막에 한 번 약분</td>
+</tr>
+</tbody>
+</table></div>
+<h3>전체 실행 시간 (초)</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>n</th>
+<th>반복</th>
+<th>0</th>
+<th>1</th>
+<th>2a</th>
+<th>2b</th>
+<th>3</th>
+<th>0 → 3</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>10</td>
+<td>6</td>
+<td>0.93</td>
+<td>0.73</td>
+<td>0.43</td>
+<td>0.39</td>
+<td>0.30</td>
+<td>3.1배</td>
+</tr>
+<tr>
+<td>12</td>
+<td>7</td>
+<td>3.31</td>
+<td>2.65</td>
+<td>1.23</td>
+<td>1.07</td>
+<td>0.80</td>
+<td>4.1배</td>
+</tr>
+<tr>
+<td>14</td>
+<td>7</td>
+<td>8.81</td>
+<td>7.63</td>
+<td>2.66</td>
+<td>2.22</td>
+<td>1.67</td>
+<td>5.3배</td>
+</tr>
+<tr>
+<td>16</td>
+<td>7</td>
+<td>21.28</td>
+<td>19.53</td>
+<td>5.84</td>
+<td>4.47</td>
+<td>3.39</td>
+<td>6.3배</td>
+</tr>
+<tr>
+<td>18</td>
+<td>8</td>
+<td>55.32</td>
+<td>51.38</td>
+<td>11.52</td>
+<td>9.22</td>
+<td>6.94</td>
+<td>8.0배</td>
+</tr>
+<tr>
+<td>20</td>
+<td>8</td>
+<td>116.75</td>
+<td>112.79</td>
+<td>21.48</td>
+<td>16.28</td>
+<td>12.67</td>
+<td>9.2배</td>
+</tr>
+</tbody>
+</table></div>
+<h3>n = 20에서 나눈 시간 (초)</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>단계</th>
+<th>$J$</th>
+<th>최댓값 (<code>exact_maximums_and_weights</code>)</th>
+<th>분산 (<code>exact_variance</code>)</th>
+<th>나머지</th>
+<th>전체</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>5.93</td>
+<td>6.39</td>
+<td>103.02</td>
+<td>1.41</td>
+<td>116.75</td>
+</tr>
+<tr>
+<td>1</td>
+<td><strong>0.82</strong></td>
+<td>6.54</td>
+<td>103.91</td>
+<td>1.51</td>
+<td>112.79</td>
+</tr>
+<tr>
+<td>2a</td>
+<td>0.83</td>
+<td>6.59</td>
+<td><strong>12.55</strong></td>
+<td>1.51</td>
+<td>21.48</td>
+</tr>
+<tr>
+<td>2b</td>
+<td>0.81</td>
+<td>6.44</td>
+<td><strong>7.54</strong></td>
+<td>1.50</td>
+<td>16.28</td>
+</tr>
+<tr>
+<td>3</td>
+<td>0.81</td>
+<td><strong>2.79</strong></td>
+<td>7.57</td>
+<td>1.50</td>
+<td>12.67</td>
+</tr>
+</tbody>
+</table></div>
+<ul>
+<li>나머지: 걸음 $P$를 <code>Fraction</code>으로 바꾸기, $10^{-40}$ 격자 반올림, mpmath 기저와 <code>lu_solve</code> 등</li>
+</ul>
+<h3>단계별 해석</h3>
+<p><strong>1. 해석적 $J$</strong></p>
+<ul>
+<li>$J$는 7.2배 빨라졌다 (n = 20: 5.93초 → 0.82초). 비용 차수가 $O(n^4)$에서 $O(n^3)$으로 내려간 효과이다 (위 절).</li>
+<li>하지만 전체는 3% (n = 20) ~ 22% (n = 10)만 줄었다. 그때 전체 시간의 88%가 분산이었기 때문이다.</li>
+</ul>
+<p><strong>2a. 분산에 공통분모</strong></p>
+<ul>
+<li>원래 방식은 <code>Fraction</code> 덧셈과 뺄셈마다 약분(gcd)을 한다. 최댓값의 분모가 n = 20에서 각각 약 45,000비트로 커서, 이 약분이 대부분의 시간을 차지했다.</li>
+<li>모든 값을 공통분모 $D = n\cdot\mathrm{lcm}(\text{분모})$ 위의 정수 $D v_i$로 바꾸면 평균 $D\bar v$도 정수이고, 끝까지 정수 연산만 한다.
+    $$\mathrm{Var} = \frac{\sum_i (Dv_i - D\bar v)^2}{n D^2}$$</li>
+<li>공통분모를 분모들의 곱이 아니라 lcm으로 잡은 이유: 최댓값들은 같은 노드에서 나와 분모가 공통 인수를 많이 공유한다. 그래서 lcm은 곱의 약 47% 비트이고, 곱을 쓸 때보다 2.3 ~ 2.6배 빠르다. 분모들이 서로소일 때만 lcm 계산 비용(10 ~ 18%)만큼 손해이다.</li>
+<li>분산은 8.3배 (103.9초 → 12.5초), 전체는 5.3배 빨라졌다.</li>
+</ul>
+<p><strong>2b. 마지막 약분 생략</strong></p>
+<ul>
+<li>n = 20에서 분모 $nD^2$는 약 77만 비트인데, 약분해도 12비트만 줄었다. 약분이 분산 시간의 약 38%였다.</li>
+<li>Newton은 분산을 비교 ($\mathrm{Var}_{new} &lt; \mathrm{Var}$, 허용값과의 비교)와 <code>float</code> 기록에만 쓴다. 그래서 약분하지 않은 (분자, 분모)로 충분하다.
+    $$\frac{a}{b} &lt; \frac{c}{d} \iff ad &lt; cb \qquad (b, d &gt; 0)$$
+    교차곱은 공통분모를 새로 만들지 않는다. 비교할 때 잠깐 생기는 정수는 약 154만 비트(약 200 KiB) 두 개이고, 약분(약 0.53초)보다 훨씬 싸다 (약 0.1초).</li>
+<li><code>Fraction</code>은 Python 3.12부터 약분을 건너뛰는 방법이 없어서, <code>exact_variance</code>에 <code>gcd</code> 인자를 두었다. 기본값 <code>gcd=True</code>는 예전처럼 약분한 <code>Fraction</code>을 반환한다.</li>
+</ul>
+<p><strong>3. <code>value_at</code>에 공통분모</strong></p>
+<ul>
+<li><code>Fraction</code>으로 Horner를 하면 계수 하나마다 곱하기, 더하기, 약분이 일어난다.</li>
+<li>계수 $c_k = a_k / C$ ($C$는 분모들의 lcm), 점 $p/q$이면
+    $$P\!\left(\tfrac{p}{q}\right) = \frac{\sum_k a_k\, p^k q^{d-k}}{C\, q^d}$$
+    분자는 정수 Horner $r \leftarrow r\,p + a_k q^{d-k}$로 구하고, 마지막에 한 번만 약분한다.</li>
+<li>최댓값 계산은 2.3배 (6.44초 → 2.79초), 전체는 1.3배 빨라졌다. t* 후보(분모 약 2,100비트)와 노드 후보(분모 $10^{40}$) 모두 빨라졌다.</li>
+</ul>
+<h3>남은 비용 (n = 20, 단계 3)</h3>
+<ul>
+<li>분산 60%, 최댓값 22%, 나머지 12%, $J$ 6%이다. 지금도 <code>Fraction</code>으로 하는 정확한 계산(분산 + 최댓값)이 82%를 차지한다.</li>
+<li>다음 후보: 분산의 <code>math.lcm</code>과 제곱합, 최댓값에서 노드 후보의 거듭제곱 $p^k q^{d-k}$를 F_i끼리 공유하기, 대칭 노드에서 $F_{n-i}(t) = F_i(-t)$로 절반만 계산하기</li>
+</ul>
+<h1 id="s36">+a</h1>
 <ol>
 <li>가중치가 양수임을 가정하면 내분점임을 보장할 수 있지만, 내분점과 외분점으로는 가중치를 보장할 수 없음. -&gt; 이걸 잘 알아보면 양수 가중치 조건을 찾는데 도움이 될지도</li>
 </ol>

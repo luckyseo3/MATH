@@ -314,7 +314,7 @@ def draw_basis_selector(sources, n_initial=4, n_min=2, n_max=12, initial_basis=N
         add_nodes(np.asarray(nodes, dtype=float), ax)
         ax.axhline(0, linewidth=0.8)
         ax.grid(True)
-        ax.legend(loc='upper right', ncol=2 if len(values) > 8 else 1)
+        # ax.legend(loc='upper right', ncol=2 if len(values) > 8 else 1)
 
     def update(name, degree):
         nonlocal selected, current_n, updating
@@ -348,6 +348,102 @@ def draw_basis_selector(sources, n_initial=4, n_min=2, n_max=12, initial_basis=N
     fig._basis_selector_controls = (radio, slider, on_key)
     render(selected, current_n, initial)
     return fig, ax, radio, slider
+
+
+def draw_node_layout(sources, n_initial=4, n_min=2, n_max=12, initial_nodes=None):
+    """[-1, 1] 수직선 위에 차수 n의 노드 배치를 그려 여러 노드를 비교한다.
+
+    sources는 {이름: 노드 생성 함수 또는 {n: 노드 배열}} 딕셔너리다.
+    노드는 문자열/Fraction이어도 된다(화면 표시용으로만 float 변환).
+    체크 박스로 표시할 노드를 여러 개 고르면 노드마다 한 줄씩 위에서 아래로 쌓는다.
+    슬라이더(또는 좌우 방향키)로 n을 고른다. initial_nodes는 처음 체크할 이름 목록이며
+    생략하면 모두 체크한다. {n: 노드 배열}에 해당 n이 없으면 그 줄에 안내 문구를 띄운다.
+    (fig, ax, checks, slider)를 반환하며 plt.show()는 호출자가 실행한다.
+    """
+    from functools import lru_cache
+    import matplotlib.pyplot as plt
+
+    if not isinstance(sources, dict) or not sources:
+        raise ValueError("Provide a non-empty dictionary of named node sources.")
+    if not n_min <= n_initial <= n_max or n_min == n_max:
+        raise ValueError("Require n_min <= n_initial <= n_max and n_min < n_max.")
+    labels = list(sources)
+    shown = set(labels if initial_nodes is None else initial_nodes)
+    if not shown <= set(labels):
+        raise ValueError("initial_nodes must be names in sources.")
+    colors = {name: plt.cm.tab10(index % 10) for index, name in enumerate(labels)}
+
+    @lru_cache(maxsize=None)
+    def prepare(name, degree):
+        source = sources[name]
+        if callable(source):
+            raw = source(degree)
+        elif degree in source:
+            raw = source[degree]
+        else:
+            return None
+        return np.sort(np.array([float(v) for v in raw]))
+
+    fig, ax = plt.subplots(figsize=(12, 4.8))
+    fig.subplots_adjust(left=0.09, right=0.80, top=0.90, bottom=0.25)
+    checks = CheckButtons(fig.add_axes([0.83, 0.30, 0.15, 0.55]), labels,
+                          [name in shown for name in labels])
+    slider = Slider(fig.add_axes([0.2, 0.08, 0.5, 0.04]), 'n', n_min, n_max,
+                    valinit=n_initial, valstep=1, valfmt='%d', dragging=True)
+    current_n = int(n_initial)
+
+    def render():
+        rows = [name for name in labels if name in shown]
+        ax.clear()
+        ax.set(xlim=(-1.02, 1.02), ylim=(-0.6, max(len(rows), 1) - 0.4), title=f'n={current_n}')
+        ax.set_xticks(np.linspace(-1, 1, 9))
+        ax.set_yticks(range(len(rows)), rows[::-1])
+        for side in ('left', 'right', 'top'):
+            ax.spines[side].set_visible(False)
+        ax.tick_params(axis='y', length=0)
+        ax.grid(True, axis='x', color='0.9', linewidth=0.6, zorder=0)
+        # 차수가 커질수록 점을 더 작게 그려 이웃 노드가 겹치지 않게 한다.
+        size = float(np.clip(240 / current_n, 3, 14))
+        for row, name in enumerate(rows):
+            y = len(rows) - 1 - row
+            ax.hlines(y, -1, 1, color='0.6', linewidth=0.8, zorder=1)
+            ax.vlines([-1, 1], y - 0.1, y + 0.1, color='0.6', linewidth=0.8, zorder=1)
+            x = prepare(name, current_n)
+            if x is None:
+                ax.text(0, y + 0.18, f'no nodes for n={current_n}', ha='center',
+                        color='firebrick', fontsize=8)
+                continue
+            ax.vlines(x, y - 0.22, y + 0.22, color=colors[name], linewidth=0.5, alpha=0.5, zorder=2)
+            ax.scatter(x, np.full_like(x, y), s=size, color=colors[name], linewidth=0, zorder=3)
+            if len(x) > 1:
+                gaps = np.diff(x)
+                ax.text(1.0, y - 0.3, f'min gap {gaps.min():.4g}   max gap {gaps.max():.4g}',
+                        ha='right', va='top', fontsize=7, color='0.4')
+
+    def on_check(name):
+        shown.symmetric_difference_update({name})
+        render()
+        fig.canvas.draw_idle()
+
+    def on_slider(value):
+        nonlocal current_n
+        if int(value) != current_n:
+            current_n = int(value)
+            render()
+            fig.canvas.draw_idle()
+
+    def on_key(event):
+        if event.key in ('left', 'right'):
+            step = 1 if event.key == 'right' else -1
+            slider.set_val(max(n_min, min(n_max, current_n + step)))
+
+    checks.on_clicked(on_check)
+    slider.on_changed(on_slider)
+    fig.canvas.mpl_connect('key_press_event', on_key)
+    # figure가 살아 있는 동안 모든 위젯과 콜백을 보관한다.
+    fig._node_layout_controls = (checks, slider, on_key)
+    render()
+    return fig, ax, checks, slider
 
 
 def draw_adjustable_generalized_lebesgue_function(basis, a_initial=0.5, a_min=0.01, a_max=0.99, step=0.01):

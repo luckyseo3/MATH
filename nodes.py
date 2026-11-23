@@ -114,9 +114,6 @@ def crossing_legendre(n):
     return cross_nodes
 
 
-
-
-
 def precise_GL_nodes(n):
     """GL 노드를 40자리 십진수에서 Fraction으로 변환한다."""
     from mpmath import mp
