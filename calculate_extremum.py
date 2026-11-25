@@ -1,12 +1,12 @@
-"""GL type polynomials F_i의 최댓값과 가중치. 최댓값의 분산은 calculate_variance.py에 있다.
+"""GL type polynomials F_i의 최댓값 또는 최솟값(kind="max"/"min")과 가중치. 최댓값의 분산은 calculate_variance.py에 있다.
 
 최댓값은 두 가지 방법으로 구한다. 후보점(±1, 다른 노드, t*)과 알고리즘은 같고 수의 종류만 다르다.
-- exact_maximums_and_weights: Fraction으로 오차 없이. 정확도용 (격자 정답지, 후보 지도, 최종 확인)
-- precise_maximums_and_weights: mpmath dps자리로. 속도용 (탐색)
+- exact_extrema_and_weights: Fraction으로 오차 없이. 정확도용 (격자 정답지, 후보 지도, 최종 확인)
+- precise_extrema_and_weights: mpmath dps자리로. 속도용 (탐색)
 """
 from fractions import Fraction
 
-def exact_maximums_and_weights(node, active=False):
+def exact_extrema_and_weights(node, active=False, kind="max"):
     """유리수 노드에서 F_i의 최댓값과 가중치를 Fraction으로 오차 없이 구한다.
 
     후보점은 구간의 양 끝 ±1, 다른 노드, t*이다. 노드가 ±1을 포함하지 않아도 된다.
@@ -61,7 +61,14 @@ def exact_maximums_and_weights(node, active=False):
                     candidates.append(star)
 
         values = {point: value_at(F_i, point) for point in candidates}
-        M.append(max(values.values())) # 이 부분을 min으로 바꾸면 최솟값으로 볼 수 있음
+
+        if kind=="max" : 
+            M.append(max(values.values()))
+        elif kind=="min" :
+            M.append(min(values.values()))
+        else : 
+            raise ValueError("Enter correct parameter")
+        
         if active:
             mirror = 2 * i == n
             best = {abs(point) if mirror else point for point, value in values.items() if value == M[-1]}
@@ -69,8 +76,8 @@ def exact_maximums_and_weights(node, active=False):
 
     return (M, w, labels) if active else (M, w)
 
-def precise_maximums_and_weights(node, dps=40):
-    """exact_maximums_and_weights와 같은 후보에서 mpmath(dps자리)로 최댓값과 가중치를 구한다.
+def precise_extrema_and_weights(node, dps=40, kind="max"):
+    """exact_extrema_and_weights와 같은 후보에서 mpmath(dps자리)로 최댓값(kind="max") 또는 최솟값(kind="min")과 가중치를 구한다.
 
     dps=40이면 n=20에서도 Fraction 정확값과 15자리 이상 일치하고, Fraction보다 약 4 ~ 7배 빠르다 (n = 10 ~ 20).
     float 노드는 그 float 값 그대로(반올림 없이) mpf로 바꾼다.
@@ -117,6 +124,13 @@ def precise_maximums_and_weights(node, dps=40):
                     if -1 <= star <= 1:
                         candidates.append(star)
 
-            M.append(max(value_at(F_i, point) for point in candidates))
+            values = [value_at(F_i, point) for point in candidates]
+
+            if kind=="max" :
+                M.append(max(values))
+            elif kind=="min" :
+                M.append(min(values))
+            else :
+                raise ValueError("Enter correct parameter")
 
         return M, w

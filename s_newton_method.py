@@ -1,6 +1,6 @@
 import construct_basis_fraction
 import construct_basis_mpmath
-import calculate_maximum
+import calculate_extremum
 import calculate_variance
 from fractions import Fraction
 
@@ -72,7 +72,7 @@ def in_T_plus(node):
     if not all(a < b for a, b in zip(node, node[1:])):
         return None, "order"
     try:
-        M, w, labels = calculate_maximum.exact_maximums_and_weights(node, active=True)
+        M, w, labels = calculate_extremum.exact_extrema_and_weights(node, active=True, kind="max")
     except (ValueError, ZeroDivisionError):
         return None, "weight = 0"
     if min(w) <= 0:
@@ -151,7 +151,7 @@ def analytic_jacobian(tau, L, w):
         right = n // 2 + 1
         left = right - 2
 
-    # 대칭이므로 서로 다른 내부 최댓값 M_1, ..., M_{cnt_x+1}의 t*만 필요하다. (calculate_maximum.py와 같은 식)
+    # 대칭이므로 서로 다른 내부 최댓값 M_1, ..., M_{cnt_x+1}의 t*만 필요하다. (calculate_extremum.py와 같은 식)
     star = {}
     for i in range(1, cnt_x + 2):
         alpha = w[i] * L[i-1][-1]
@@ -191,8 +191,8 @@ def finite_difference_jacobian(node, dps):
     for i in range(cnt_x):
         node_plus = move_ith_variable(node, i, h)
         node_minus = move_ith_variable(node, i, -h)
-        M_plus = calculate_maximum.precise_maximums_and_weights(node_plus, dps)[0]
-        M_minus = calculate_maximum.precise_maximums_and_weights(node_minus, dps)[0]
+        M_plus = calculate_extremum.precise_extrema_and_weights(node_plus, dps, kind="max")[0]
+        M_minus = calculate_extremum.precise_extrema_and_weights(node_minus, dps, kind="max")[0]
 
         # f_j = M_1 - M_{j+2} (j = 0, ..., cnt_x-1)이므로 J[j, i] = ∂f_j/∂x_i
         for j in range(cnt_x):

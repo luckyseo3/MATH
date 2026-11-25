@@ -10,7 +10,7 @@ import sympy as sp
 import nodes
 import construct_basis_sympy as basis
 import draw_basis as draw
-import calculate_maximum
+import calculate_extremum
 import calculate_variance
 import draw_variance as variance_plot
 
@@ -91,9 +91,9 @@ if __name__ == "__main__":
     #     histories[name] = history
 
     #     # 탐색은 numpy로 하고 시작 노드와 최종 노드만 Fraction으로 다시 확인한다.
-    #     _, start_weights = calculate_maximum.exact_maximums_and_weights(initial_node)
+    #     _, start_weights = calculate_extremum.exact_extrema_and_weights(initial_node, kind="max")
     #     final_node = history[0][-1]
-    #     final_maxima, final_weights = calculate_maximum.exact_maximums_and_weights(final_node)
+    #     final_maxima, final_weights = calculate_extremum.exact_extrema_and_weights(final_node, kind="max")
     #     print(f"{name:>14} {str(min(start_weights) > 0):>8} {len(history[0]) - 1:>6} "
     #           f"{final_node[-4]:>12.8f} {final_node[-3]:>12.8f} {final_node[-2]:>12.8f} "
     #           f"{float(calculate_variance.exact_variance(final_maxima[1:-1])):>22.15e} {str(min(final_weights) > 0):>8}")

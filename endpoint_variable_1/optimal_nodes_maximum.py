@@ -4,10 +4,10 @@
 - 매 걸음 자유변수를 1e-40 격자에 반올림하므로 노드는 소수 40자리 문자열로 정확히 적는다.
   이 노드에서 Fraction으로 계산한 정확한 분산은 1e-60 이하이다.
 - n = 9 ~ 55: variance_cache/newton/n{n}.json, n = 4 ~ 8: 같은 설정으로 다시 계산한 결과 (2026-11-22)
-- 최댓값은 calculate_maximum.precise_maximums_and_weights로 계산한다.
+- 최댓값은 calculate_extremum.precise_extrema_and_weights로 계산한다.
 """
 import sys, pathlib; sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))  # 공통 모듈
-import calculate_maximum
+import calculate_extremum
 import calculate_variance
 
 DPS = 100   # n = 35에서 반올림으로 약 12자리를 잃으므로 분산 1e-60까지 보려면 40자리로는 부족하다.
@@ -71,7 +71,7 @@ optimal_node = {
 if __name__ == "__main__" :
 
     for name, node in optimal_node.items():
-        M, weights = calculate_maximum.precise_maximums_and_weights(node, DPS)
+        M, weights = calculate_extremum.precise_extrema_and_weights(node, DPS, kind="max")
         inner = [float(v) for v in M[1:-1]]
         variance, _ = calculate_variance.precise_variance_of_maximums_of_F(node, DPS)
         # print(f"the maximum of the optimal {name} node : {[float(v) for v in M]}")

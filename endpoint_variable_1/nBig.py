@@ -23,7 +23,7 @@ import matplotlib.pyplot as plt
 
 import nodes
 import draw_basis as draw
-import calculate_maximum
+import calculate_extremum
 import calculate_variance
 import s_compass_search as compass_search
 import s_newton_method as gauss_newton
@@ -99,7 +99,7 @@ def run(n):
     elapsed = elapsed_before + time.perf_counter() - start
 
     final = node_history[-1]
-    M, weights = calculate_maximum.precise_maximums_and_weights(final, DPS)
+    M, weights = calculate_extremum.precise_extrema_and_weights(final, DPS, kind="max")
     result = {
         'settings': settings(n),
         'esc_variance': float(min_history[0]),

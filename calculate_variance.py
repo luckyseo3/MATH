@@ -1,13 +1,13 @@
 """GL type polynomials F_i 최댓값의 분산. 분산을 줄이는 탐색은 s_compass_search.py, s_newton_method.py, s_gradient_descent.py에 있다.
 
-- exact_variance: 값 목록(예: calculate_maximum.exact_maximums_and_weights의 M[1:-1])의 모분산을 반올림 없이.
-- precise_variance_of_maximums_of_F: 노드에서 calculate_maximum.precise_maximums_and_weights로 최댓값을 구해
+- exact_variance: 값 목록(예: calculate_extremum.exact_extrema_and_weights의 M[1:-1])의 모분산을 반올림 없이.
+- precise_variance_of_maximums_of_F: 노드에서 calculate_extremum.precise_extrema_and_weights로 최댓값을 구해
   분산 (내부, 끝점 포함)을 mpmath dps자리로 계산한다.
 """
 import math
 from fractions import Fraction
 
-from calculate_maximum import precise_maximums_and_weights
+from calculate_extremum import precise_extrema_and_weights
 
 def exact_variance(values, gcd=True):
     """모분산을 반올림 없이 구한다.
@@ -32,14 +32,14 @@ def exact_variance(values, gcd=True):
     return Fraction(numerator, denominator) if gcd else (numerator, denominator)
 
 def precise_variance_of_maximums_of_F(node, dps=40):
-    """precise_maximums_and_weights로 구한 분산 (내부, 끝점 포함)을 float로 반환한다.
+    """precise_extrema_and_weights로 구한 분산 (내부, 끝점 포함)을 float로 반환한다.
 
     분산 자체를 dps자리로 계산한 뒤 float로 바꾸므로 상대오차는 약 1e-16이다.
     """
     import mpmath as mp
 
     with mp.workdps(dps):
-        M, _ = precise_maximums_and_weights(node, dps)
+        M, _ = precise_extrema_and_weights(node, dps, kind="max")
 
         def variance(values):
             mean = sum(values) / len(values)

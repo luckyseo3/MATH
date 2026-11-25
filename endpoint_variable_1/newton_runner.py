@@ -29,9 +29,9 @@ def write_json(path, data):
 
 def describe(node):
     """최종 노드에서 Fraction으로 최댓값, 가중치, 분산을 정확히 다시 계산한다."""
-    import calculate_maximum
+    import calculate_extremum
     import calculate_variance
-    M, w = calculate_maximum.exact_maximums_and_weights(node)
+    M, w = calculate_extremum.exact_extrema_and_weights(node, kind="max")
     inner = M[1:-1]
     # 정확한 분산은 분모가 수천 자리라 저장하지 않는다. 필요하면 free에서 다시 계산할 수 있다.
     return dict(variance=float(calculate_variance.exact_variance(inner)),

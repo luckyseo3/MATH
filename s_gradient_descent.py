@@ -3,7 +3,7 @@
 - 변수: 양수 쪽 내부 노드 x = (tau_{(n+1)//2+1}, ..., tau_{n-1}) (0과 끝 노드 a 제외, 오름차순).
   끝 노드 ±a(endpoint_variable)는 initial_node의 양 끝에서 읽고 움직이지 않는다.
   compass search처럼 대칭 쌍을 함께 움직이므로 노드는 항상 원점 대칭이다.
-- 목적함수: 내부 F_1 ~ F_{n-1} 최댓값의 모분산 (calculate_maximum.precise_maximums_and_weights, mpmath dps자리).
+- 목적함수: 내부 F_1 ~ F_{n-1} 최댓값의 모분산 (calculate_extremum.precise_extrema_and_weights, mpmath dps자리).
   비교와 차분이 float 반올림(상대오차 1e-16)에 묻히지 않도록 분산을 mpf 그대로 쓴다.
 - gradient: 기본은 중앙차분 (f(x+h e_j) - f(x-h e_j)) / 2h, 오차 O(h^2).
   해석적 gradient를 만들면 gradient_function=으로 바꿔 끼운다. (x, n, dps, a) -> mpf 리스트.
@@ -20,7 +20,7 @@ from fractions import Fraction
 
 from mpmath import mp
 
-import calculate_maximum
+import calculate_extremum
 import calculate_variance
 
 
@@ -38,7 +38,7 @@ def half_node(node, n):
 def variance(x, n, dps=40, a=1):
     """내부 최댓값의 모분산을 mpf로 반환한다."""
     with mp.workdps(dps):
-        M, _ = calculate_maximum.precise_maximums_and_weights(full_node(x, n, a), dps)
+        M, _ = calculate_extremum.precise_extrema_and_weights(full_node(x, n, a), dps, kind="max")
         M = M[1:-1]
         mean = mp.fsum(M) / len(M)
         return mp.fsum((value - mean) ** 2 for value in M) / len(M)
@@ -148,6 +148,6 @@ if __name__ == "__main__":
     print("노드 (양수 쪽): " + ", ".join(mp.nstr(v, 20) for v in half_node(final, N)))
 
     # 탐색은 mpmath로 하고 최종 노드만 Fraction 정확값으로 다시 확인한다.
-    exact_maxima, exact_weights = calculate_maximum.exact_maximums_and_weights([to_fraction(v) for v in final])
+    exact_maxima, exact_weights = calculate_extremum.exact_extrema_and_weights([to_fraction(v) for v in final], kind="max")
     print(f"exact check: {float(calculate_variance.exact_variance(exact_maxima[1:-1])):.15e}, "
           f"min weight {float(min(exact_weights)):.4g}")

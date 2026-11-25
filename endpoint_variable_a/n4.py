@@ -1,4 +1,4 @@
-"""끝 노드를 고정하지 않은 0-symmetric 노드 (-b, -a, a, b)에서 내부 F_1~F_3 최댓값 분산을 관찰한다.
+"""끝 노드를 고정하지 않은 0-symmetric 노드 (-b, -a, a, b)에서 내부 F_1~F_3 최댓값 분산과 최솟값 분산을 관찰한다.
 
 끝 노드 b도 변수이므로 자유변수가 (a, b) 두 개이고 방정식(내부 최댓값이 모두 같다)은 하나이다.
 그래서 분산이 0인 점은 한 점이 아니라 (a, b) 평면 위의 곡선을 이룰 수 있다.
@@ -17,6 +17,7 @@ import draw_variance as variance_plot
 import zero_variance_curve
 
 GRID_N = 1000        # 격자 간격 1/GRID_N = 0.001
+MIN_GRID_N = 100     # 최솟값 분산 격자 간격 1/MIN_GRID_N = 0.01
 NEAR_ZERO = 1e-6     # 분산이 이보다 작은 양수 가중치 격자점을 자홍색 점으로 표시한다.
 
 
@@ -55,6 +56,40 @@ if __name__ == "__main__":
     # (검은 점선 계열은 가중치가 0인 곡선이다.)
     fig_regions, ax_regions = variance_plot.draw_active_regions(
         GRID_N, n=4, cache_dir=VARIANCE_CACHE, show_boundaries=True, near_zero=NEAR_ZERO, curve=curve,
+    )
+
+    ##################################################################################################################
+    # 5️⃣ 최솟값 m_i = min F_i: 노드 (-b, -a, a, b)에서 a, b에 따른 내부 F_1~F_3 최솟값 분산 (간격 1/MIN_GRID_N)
+    # 결과는 variance_cache/n4/N{MIN_GRID_N}_min/에 저장된다. 최솟값 후보(t*, ±1, tau_j)도 함께 구한다.
+    # 내부 F_i는 ±1에서 0이므로 m_i <= 0이고, F_i가 음수가 되지 않으면 m_i = 0이다.
+    variance_plot.variance_plane(MIN_GRID_N, n=4, endpoint_variable=ENDPOINT_VARIABLE, cache_dir=VARIANCE_CACHE, kind="min")
+    variance_plot.active_plane(MIN_GRID_N, n=4, endpoint_variable=ENDPOINT_VARIABLE, cache_dir=VARIANCE_CACHE, kind="min")
+    fig_min_variance, ax_min_variance, min_variance_sliders = variance_plot.draw_variance_plane(
+        MIN_GRID_N, n=4, cache_dir=VARIANCE_CACHE, show_boundaries=True,
+        negative_color="white", near_zero=NEAR_ZERO, kind="min",
+    )
+
+    ##################################################################################################################
+    # 6️⃣ 최솟값 분산이 0인 곡선 m_1 = m_2 (2️⃣와 같은 이분법, 결과는 variance_cache/n4/N{MIN_GRID_N}_min/zero_curve.json)
+    min_curve_points = zero_variance_curve.zero_variance_curve(MIN_GRID_N, n=4, cache_dir=VARIANCE_CACHE, kind="min")
+    min_curve = [(float(Fraction(p['a'])), float(Fraction(p['b']))) for p in min_curve_points]
+    fig_min_curve, ax_min_curve = zero_variance_curve.draw_zero_curve(min_curve_points, n=4, kind="min")
+    # 최솟값 출현 지도와 최솟값 분산 0 곡선
+    fig_min_regions, ax_min_regions = variance_plot.draw_active_regions(
+        MIN_GRID_N, n=4, cache_dir=VARIANCE_CACHE, show_boundaries=True, near_zero=NEAR_ZERO, curve=min_curve, kind="min",
+    )
+
+    ##################################################################################################################
+    # 7️⃣ 최댓값과 최솟값의 분산이 동시에 0인 노드: M_1 = M_2 곡선과 m_1 = m_2 곡선의 교점
+    # 두 격자를 1/MIN_GRID_N로 맞춰 두 부호가 모두 바뀌는 칸에서 Newton으로 풀고 Fraction으로 확인한다.
+    # 결과는 variance_cache/n4/common_zero.json.
+    common = zero_variance_curve.common_zero_points(4, cache_dir=VARIANCE_CACHE, grids={"max": GRID_N, "min": MIN_GRID_N})
+    for point in common['points']:
+        print(f"n=4: Var(M) = Var(m) = 0 at a = {point['a_decimal']}, b = {point['b_decimal']}, "
+              f"M = {point['common_max']:.12f}, m = {point['common_min']:.12f}")
+    fig_both, ax_both = zero_variance_curve.draw_zero_curves(
+        {"max": curve_points, "min": min_curve_points}, n=4, common=common['points'],
+        cache_dir=VARIANCE_CACHE, N=MIN_GRID_N, zoom=(0.28, 0.40, 0.80, 0.92),
     )
 
     plt.show()

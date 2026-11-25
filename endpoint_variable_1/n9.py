@@ -10,7 +10,7 @@ import sympy as sp
 import nodes
 import construct_basis_sympy as basis
 import draw_basis as draw
-import calculate_maximum
+import calculate_extremum
 import draw_variance as variance_plot
 
 # 격자 간격은 1/GRID_N이다.

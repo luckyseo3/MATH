@@ -10,7 +10,7 @@ import sympy as sp
 import nodes
 import construct_basis_sympy as basis
 import draw_basis as draw
-import calculate_maximum
+import calculate_extremum
 import calculate_variance
 import s_compass_search as compass_search
 import draw_variance as variance_plot
@@ -82,7 +82,7 @@ if __name__ == "__main__":
             print(f"{step:>4} {float(step_h):>20.15f} {float(value):>20.15e}  [{node_text}]")
 
         # 탐색은 mpmath로 하고 최종 노드만 Fraction 정확값으로 다시 확인한다.
-        exact_maxima, _ = calculate_maximum.exact_maximums_and_weights(node_history[-1])
+        exact_maxima, _ = calculate_extremum.exact_extrema_and_weights(node_history[-1], kind="max")
         exact_variance = calculate_variance.exact_variance(exact_maxima[1:-1])
         print(f"[{name}] a={float(node_history[-1][-2]):.8f}, exact check: {float(exact_variance):.15e}")
 
