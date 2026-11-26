@@ -125,6 +125,9 @@ def run(start, seconds):
         for n in [n for n, r in pending.items() if r.ready()]:
             del pending[n]
         while len(pending) < WORKERS:
+            if (OUT / f'n{n_next}.json').exists():   # 이미 끝난 n은 건너뛴다.
+                n_next += 1
+                continue
             pending[n_next] = pool.apply_async(run_one, (n_next,))
             print(time.strftime('%H:%M:%S'), f'start n={n_next}', flush=True)
             n_next += 1
